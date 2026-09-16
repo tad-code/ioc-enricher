@@ -26,27 +26,33 @@
       font-size: 15px; line-height: 1.55;
     }
     code, pre, .mono { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; }
+    a { color: var(--accent); }
     header {
       border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #101923, var(--bg));
-      padding: 22px 20px 18px;
+      padding: 22px 20px 14px;
     }
     .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
     h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
     h1 span { color: var(--accent); }
     .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .nav { margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; }
+    .nav a { color: var(--muted); text-decoration: none; border-bottom: 1px solid transparent; }
+    .nav a:hover { color: var(--accent); border-bottom-color: var(--accent); }
     main { max-width: 1080px; margin: 0 auto; padding: 22px 20px 60px; }
     .card {
       background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
       padding: 18px; margin-bottom: 18px;
     }
     .card h2 { margin: 0 0 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
-    form.search { display: flex; gap: 10px; flex-wrap: wrap; }
-    input[type=text] {
+    .card h3 { margin: 18px 0 8px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+    .card h3:first-of-type { margin-top: 12px; }
+    form.search { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+    input[type=text], textarea {
       flex: 1 1 420px; min-width: 240px; padding: 13px 14px; border-radius: 9px;
       border: 1px solid var(--line); background: #0d141c; color: var(--txt); font-size: 15px;
-      font-family: "Cascadia Mono", Consolas, monospace;
+      font-family: "Cascadia Mono", Consolas, monospace; resize: vertical;
     }
-    input[type=text]:focus { outline: none; border-color: var(--accent); }
+    input[type=text]:focus, textarea:focus { outline: none; border-color: var(--accent); }
     button {
       padding: 13px 20px; border-radius: 9px; border: 0; cursor: pointer;
       background: var(--accent); color: #05201c; font-weight: 700; font-size: 14px;
@@ -62,6 +68,7 @@
     .alert { border-radius: 10px; padding: 13px 15px; margin-bottom: 18px; font-size: 14px; }
     .alert.error { background: #2a141b; border: 1px solid #5b2634; color: #ffb3bd; }
     .alert.ok { background: #10241f; border: 1px solid #1f5346; color: #8ff0d8; }
+    .alert.info { background: #101d2b; border: 1px solid #24486b; color: #a9d1f5; }
     .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
     .badge {
       display: inline-block; padding: 5px 12px; border-radius: 999px;
@@ -82,6 +89,16 @@
     .ioc-value { font-size: 24px; font-weight: 600; word-break: break-all; }
     .meter { height: 8px; background: #0d141c; border-radius: 999px; overflow: hidden; margin-top: 10px; }
     .meter span { display: block; height: 100%; background: var(--accent); }
+    .action {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: 10px; font-weight: 700; flex-wrap: wrap;
+    }
+    .action-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: .85; font-weight: 600; }
+    .action-value { font-size: 18px; letter-spacing: .5px; }
+    .action-low { background: rgba(53,208,127,.12); border: 1px solid rgba(53,208,127,.4); color: var(--low); }
+    .action-medium { background: rgba(232,197,71,.12); border: 1px solid rgba(232,197,71,.4); color: var(--medium); }
+    .action-high { background: rgba(240,140,58,.12); border: 1px solid rgba(240,140,58,.4); color: var(--high); }
+    .action-critical { background: rgba(239,77,90,.14); border: 1px solid rgba(239,77,90,.45); color: var(--critical); }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
@@ -95,8 +112,26 @@
       background: #0a0f15; border: 1px solid var(--line); border-radius: 9px;
       padding: 12px; overflow-x: auto; font-size: 12.5px; color: #b9f2e6; max-height: 380px;
     }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+    .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+    .stat .lbl { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .8px; }
+    .stat .val { font-size: 19px; font-weight: 700; margin-top: 3px; word-break: break-word; }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+    .bar-label { width: 110px; color: var(--muted); flex: 0 0 auto; }
+    .bar { flex: 1 1 auto; height: 9px; background: #0d141c; border-radius: 999px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: var(--accent); }
+    .bar-low span { background: var(--low); }
+    .bar-medium span { background: var(--medium); }
+    .bar-high span { background: var(--high); }
+    .bar-critical span { background: var(--critical); }
+    .bar-value { width: 46px; text-align: right; flex: 0 0 auto; }
     footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; padding: 18px 20px 40px; text-align: center; }
     .empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+    .pill { display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .pill.on { color: var(--low); border-color: rgba(53,208,127,.4); }
+    .pill.off { color: var(--high); border-color: rgba(240,140,58,.4); }
+    .endpoints { font-size: 13.5px; }
+    .endpoints code { background: #0d141c; border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; }
   </style>
 </head>
 <body>
@@ -109,29 +144,40 @@
       &nbsp;·&nbsp;
       {% if db_ready %}<span class="pill on">Base de données connectée</span>{% else %}<span class="pill off">Base de données non configurée</span>{% endif %}
     </div>
+    <nav class="nav">
+      <a href="#analyser">Analyser</a>
+      <a href="#tableau-de-bord">Tableau de bord</a>
+      <a href="#historique">Historique</a>
+      <a href="#api">API JSON</a>
+      <a href="/export.csv">Export CSV</a>
+      <a href="/health">/health</a>
+    </nav>
   </div>
 </header>
 
 <main>
 
   <!-- ===================== FORMULAIRE ===================== -->
-  <section class="card">
-    <h2>Analyser un indicateur</h2>
+  <section class="card" id="analyser">
+    <h2>Analyser un indicateur (ou plusieurs)</h2>
     <form class="search" action="/analyze" method="post">
-      <input type="text" name="ioc" value="{{ form_value }}" autocomplete="off" autofocus
-             maxlength="512" placeholder="185.10.10.5  ·  evil-domain.com  ·  44d88612fea8a8f36de82e1278abb02f">
+      <textarea name="ioc" rows="2" autocomplete="off" autofocus maxlength="512"
+                placeholder="185.10.10.5&#10;evil-domain.com&#10;44d88612fea8a8f36de82e1278abb02f">{{ form_value }}</textarea>
       <button type="submit">Enrichir</button>
     </form>
     <p class="hint">
       <b>Formats acceptés :</b> adresse IP (v4/v6), nom de domaine, empreinte MD5 / SHA1 / SHA256.
       Les IOC neutralisés sont acceptés (<code>185[.]10[.]10[.]5</code> ou <code>hxxps://evil[.]com</code>).
+      <br>
+      <b>Mode lot :</b> collez plusieurs indicateurs (un par ligne, ou séparés par des virgules) —
+      jusqu'à {{ max_lot }} par analyse.
     </p>
   </section>
 
   {% if error %}<div class="alert error"><b>⚠ {{ error }}</b></div>{% endif %}
   {% if notice %}<div class="alert ok">{{ notice }}</div>{% endif %}
 
-  <!-- ===================== RÉSULTAT ===================== -->
+  <!-- ===================== RÉSULTAT SIMPLE ===================== -->
   {% if result %}
   <section class="card">
     <div class="row">
@@ -155,6 +201,22 @@
       </div>
     </div>
   </section>
+
+  <div class="action action-{{ result.risque.level|lower }}">
+    <span class="action-label">Action recommandée</span>
+    <span class="action-value">{{ result.risque.action }}</span>
+  </div>
+
+  {% if result.precedente %}
+  <div class="alert info">
+    <b>Déjà analysé</b> le {{ (result.precedente.created_at or '')[:19].replace('T', ' ') }} UTC
+    — score précédent : <b>{{ result.precedente.risk_score }}/100</b>
+    {% if result.evolution is not none %}
+      ({% if result.evolution > 0 %}+{{ result.evolution }}{% else %}{{ result.evolution }}{% endif %} point(s) depuis)
+    {% endif %}
+    — <a href="#historique">voir l'historique</a>
+  </div>
+  {% endif %}
 
   <section class="card">
     <h2>Justification du score de risque</h2>
@@ -180,8 +242,101 @@
   </section>
   {% endif %}
 
-  <!-- ===================== HISTORIQUE ===================== -->
+  <!-- ===================== RÉSULTATS DU LOT ===================== -->
+  {% if lot %}
   <section class="card">
+    <h2>Résultats du lot ({{ lot | length }} indicateur(s))</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>IOC</th><th>Type</th><th>Réputation</th><th>Risque</th>
+          <th>Score</th><th>Action recommandée</th><th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lot %}
+        <tr>
+          <td class="mono" style="word-break:break-all">{{ ligne.ioc }}</td>
+          <td>{{ ligne.ioc_type_label }}</td>
+          <td class="mono">{{ ligne.reputation or '—' }}</td>
+          <td>{% if ligne.level %}<span class="badge risk-{{ ligne.level|lower }}">{{ ligne.level }}</span>{% else %}—{% endif %}</td>
+          <td class="mono">{{ ligne.score if ligne.score is not none else '—' }}</td>
+          <td>{{ ligne.action or '—' }}</td>
+          <td>
+            {{ ligne.statut }}
+            <div class="hint" style="margin:2px 0 0">{{ ligne.message }}</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if lot_erreurs %}
+    <p class="hint"><b>Indicateurs refusés :</b>
+      {% for entree in lot_erreurs %}<code>{{ entree.ioc }}</code> {% endfor %}
+      — ils ne correspondent à aucun format reconnu.
+    </p>
+    {% endif %}
+    {% if ignorees %}
+    <p class="hint"><b>{{ ignorees }} indicateur(s) non traité(s)</b> : la limite est de {{ max_lot }} par analyse
+      (temps d'exécution de la fonction d'hébergement). Relancez-les dans un second lot.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- ===================== TABLEAU DE BORD ===================== -->
+  <section class="card" id="tableau-de-bord">
+    <h2>Tableau de bord</h2>
+
+    {% if db_error %}
+      <div class="alert error"><b>Statistiques indisponibles :</b> {{ db_error }}</div>
+    {% endif %}
+
+    {% if stats.total %}
+      <div class="stat-grid">
+        <div class="stat"><div class="lbl">Analyses enregistrées</div><div class="val">{{ stats.total }}</div></div>
+        <div class="stat"><div class="lbl">Score de risque moyen</div><div class="val">{{ stats.score_moyen }}<span style="font-size:13px; color:var(--muted)">/100</span></div></div>
+        <div class="stat"><div class="lbl">Sources interrogées</div><div class="val">{{ stats.sources_distinctes }}</div></div>
+        <div class="stat"><div class="lbl">Dernière analyse</div><div class="val" style="font-size:13px">{{ (stats.derniere or '')[:19].replace('T', ' ') }}</div></div>
+      </div>
+
+      {% set base = stats.total if stats.total else 1 %}
+
+      <h3>Répartition par niveau de risque</h3>
+      {% for niveau in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] %}
+      <div class="bar-row">
+        <span class="bar-label">{{ niveau }}</span>
+        <div class="bar bar-{{ niveau|lower }}"><span style="width: {{ (stats.par_risque[niveau] / base * 100) | round(1) }}%"></span></div>
+        <span class="bar-value">{{ stats.par_risque[niveau] }}</span>
+      </div>
+      {% endfor %}
+
+      <h3>Répartition par type d'indicateur</h3>
+      {% for type_ioc in ['ip', 'domain', 'hash'] %}
+      <div class="bar-row">
+        <span class="bar-label">{{ types.get(type_ioc, type_ioc) }}</span>
+        <div class="bar"><span style="width: {{ (stats.par_type[type_ioc] / base * 100) | round(1) }}%"></span></div>
+        <span class="bar-value">{{ stats.par_type[type_ioc] }}</span>
+      </div>
+      {% endfor %}
+
+      {% if stats.sources %}
+      <h3>Sources les plus utilisées</h3>
+      {% for source, nombre in stats.sources %}
+      <div class="bar-row">
+        <span class="bar-label" style="width:190px; font-size:12px">{{ source }}</span>
+        <div class="bar"><span style="width: {{ (nombre / base * 100) | round(1) }}%"></span></div>
+        <span class="bar-value">{{ nombre }}</span>
+      </div>
+      {% endfor %}
+      {% endif %}
+    {% else %}
+      <p class="empty">Aucune donnée pour le moment : lancez une première analyse.</p>
+    {% endif %}
+  </section>
+
+  <!-- ===================== HISTORIQUE ===================== -->
+  <section class="card" id="historique">
     <h2>Historique des analyses</h2>
 
     {% if db_error %}
@@ -219,16 +374,53 @@
           {% endfor %}
         </tbody>
       </table>
-      <p class="hint">{{ total }} analyse(s) affichée(s) — les 25 plus récentes.</p>
+      <p class="hint">
+        {{ total }} analyse(s) affichée(s) — les 25 plus récentes.
+        &nbsp;·&nbsp; <a href="/export.csv">Télécharger tout l'historique (CSV)</a>
+      </p>
     {% else %}
       <p class="empty">Aucune analyse enregistrée pour le moment. Soumettez un IOC ci-dessus.</p>
     {% endif %}
   </section>
 
+  <!-- ===================== API ===================== -->
+  <section class="card endpoints" id="api">
+    <h2>API JSON — utiliser le moteur depuis un autre outil</h2>
+    <p class="hint" style="margin-top:0">
+      Le moteur d'enrichissement est aussi exposé en JSON : un script, un tableur ou un
+      futur outil de supervision peut l'appeler sans passer par cette page.
+    </p>
+    <table>
+      <thead><tr><th>Route</th><th>Rôle</th><th>Exemple</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">GET /api/analyze</td>
+          <td>Analyse un IOC et renvoie le rapport en JSON<br><span class="hint" style="margin:0">(<code>save=0</code> pour ne pas enregistrer)</span></td>
+          <td class="mono"><a href="/api/analyze?ioc=8.8.8.8&amp;save=0">/api/analyze?ioc=8.8.8.8&amp;save=0</a></td>
+        </tr>
+        <tr>
+          <td class="mono">GET /api/history</td>
+          <td>Historique des analyses (1 à 100 entrées)</td>
+          <td class="mono"><a href="/api/history?limit=5">/api/history?limit=5</a></td>
+        </tr>
+        <tr>
+          <td class="mono">GET /export.csv</td>
+          <td>Export complet de l'historique (Excel / LibreOffice)</td>
+          <td class="mono"><a href="/export.csv">/export.csv</a></td>
+        </tr>
+        <tr>
+          <td class="mono">GET /health</td>
+          <td>Sonde de supervision (réponse minimale)</td>
+          <td class="mono"><a href="/health">/health</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
 </main>
 
 <footer>
-  IOC Enricher — Flask · API externes : ip-api.com, RDAP (rdap.org), CIRCL hashlookup
+  IOC Enricher — Flask · API externes : ip-api.com, RDAP (rdap.org), Google DNS (dns.google), CIRCL hashlookup
 </footer>
 
 <script src="{{ url_for('static', filename='app.js') }}" defer></script>

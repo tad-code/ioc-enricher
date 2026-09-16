@@ -315,8 +315,12 @@ def enrich_domain(domain: str) -> dict:
     if len(brut.get("nameservers", [])) <= 1:
         signaux.append({"points": 5, "label": "Un seul serveur de noms déclaré"})
 
+    # --- Sécurité email : SPF, DMARC et serveurs MX -----------------------
+    email = _email_security(domain)
+    signaux += email["signaux"]
+
     return {
-        "source": "RDAP (rdap.org)",
+        "source": "RDAP (rdap.org) + DNS (dns.google)",
         "endpoint": url,
         "http_status": statut,
         "raw": brut,
@@ -341,9 +345,86 @@ def enrich_domain(domain: str) -> dict:
             ("Serveurs de noms", nameservers or "-"),
             ("Statut registre", statuts),
             ("Adresse IP", dns["a_record"] or "aucune"),
-        ],
+        ] + email["champs"],
         "signals": signaux,
-        "notes": ["Source : RDAP via rdap.org (données d'enregistrement publiques)"],
+        "notes": [
+            "Source : RDAP via rdap.org (données d'enregistrement publiques)",
+            email["note"],
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# 2 bis) SÉCURITÉ EMAIL DU DOMAINE (SPF / DMARC / MX)
+# ---------------------------------------------------------------------------
+
+DOH_URL = "https://dns.google/resolve"
+
+
+def _dns_reponses(domaine: str, type_enregistrement: str, nom: str | None = None):
+    """Interroge Google DNS-over-HTTPS : une API JSON publique, sans clé.
+
+    Exemple : https://dns.google/resolve?name=exemple.com&type=TXT
+    """
+    reponse = _get(DOH_URL, params={"name": nom or domaine, "type": type_enregistrement})
+    if reponse.status_code >= 400:
+        raise EnrichmentError(
+            f"dns.google a renvoyé le code HTTP {reponse.status_code}.", kind="http"
+        )
+    return reponse.json().get("Answer", []) or []
+
+
+def _email_security(domaine: str) -> dict:
+    """Vérifie SPF, DMARC et les serveurs MX d'un domaine.
+
+    Un domaine qui envoie ou reçoit du courrier sans SPF ni DMARC peut être
+    usurpé très facilement : c'est un signal important dans une analyse de
+    phishing (faux email venant d'un domaine légitime).
+    """
+    infos = {"spf": None, "dmarc": None, "mx": [], "erreur": None}
+    signaux = []
+
+    try:
+        for reponse in _dns_reponses(domaine, "TXT"):
+            texte = reponse.get("data", "").strip().strip('"').replace('" "', "")
+            if texte.lower().startswith("v=spf1"):
+                infos["spf"] = texte
+
+        for reponse in _dns_reponses(domaine, "TXT", "_dmarc." + domaine):
+            texte = reponse.get("data", "").strip().strip('"').replace('" "', "")
+            if texte.lower().startswith("v=dmarc1"):
+                infos["dmarc"] = texte
+
+        for reponse in _dns_reponses(domaine, "MX"):
+            serveur = reponse.get("data", "").split()[-1].rstrip(".")
+            if serveur:
+                infos["mx"].append(serveur)
+
+    except EnrichmentError as exc:
+        # La vérification email est un bonus : si elle échoue, l'analyse continue.
+        message = f"Vérification email indisponible ({exc.kind})."
+        log.warning("Sécurité email de %s non vérifiée : %s", domaine, exc)
+        return {"champs": [], "signaux": [], "note": message}
+
+    champs = [
+        ("SPF", infos["spf"] or "aucun"),
+        ("DMARC", infos["dmarc"] or "aucun"),
+        ("Serveurs mail (MX)", ", ".join(infos["mx"]) if infos["mx"] else "aucun"),
+    ]
+
+    if not infos["spf"]:
+        signaux.append({"points": 10, "label": "Aucun enregistrement SPF : n'importe qui peut envoyer des emails au nom de ce domaine"})
+    if not infos["dmarc"]:
+        signaux.append({"points": 10, "label": "Aucune politique DMARC : le domaine est facilement usurpable (phishing)"})
+    elif "p=reject" in infos["dmarc"].lower():
+        signaux.append({"points": -10, "label": "Politique DMARC stricte (p=reject) : usurpation bloquée"})
+    if infos["mx"] and not infos["dmarc"]:
+        signaux.append({"points": 5, "label": "Le domaine reçoit du courrier mais ne publie aucune politique DMARC"})
+
+    return {
+        "champs": champs,
+        "signaux": signaux,
+        "note": "Source : Google DNS-over-HTTPS (dns.google) — SPF, DMARC et MX",
     }
 
 

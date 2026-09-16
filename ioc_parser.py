@@ -156,3 +156,49 @@ def parse_ioc(value: str) -> dict:
             candidate = candidate[4:]
 
     return {"ok": True, "error": None, "ioc": candidate, "type": ioc_type, "detail": detail}
+
+
+def decoupe_iocs(texte: str, maximum: int = 5):
+    """Découpe une saisie multiple en une liste d'IOC uniques.
+
+    Séparateurs acceptés : retour à la ligne, virgule, point-virgule et
+    tabulation — autrement dit « un indicateur par ligne », ce qui est la façon
+    dont un analyste colle une liste. Les doublons sont supprimés et la liste
+    est bornée pour ne pas dépasser le temps d'exécution autorisé côté
+    hébergement.
+    """
+    morceaux = re.split(r"[\r\n,;\t]+", texte or "")
+    uniques, vus = [], set()
+    for morceau in morceaux:
+        valeur = morceau.strip()
+        if valeur and valeur.lower() not in vus:
+            vus.add(valeur.lower())
+            uniques.append(valeur)
+    return uniques[:maximum]
+
+
+def parse_many(texte: str, maximum: int = 5) -> dict:
+    """Valide une liste d'IOC. Retourne les valides, les erreurs et le surplus.
+
+    {
+      "analyses": [ {résultat de parse_ioc}, ... ],   # IOC exploitables
+      "erreurs":  [ {résultat de parse_ioc}, ... ],   # IOC refusés
+      "ignorees": int,                                # au-delà du maximum
+      "total":    int                                 # demandés au départ
+    }
+    """
+    valeurs = decoupe_iocs(texte, maximum=10_000)
+    total = len(valeurs)
+    retenues = valeurs[:maximum]
+
+    analyses, erreurs = [], []
+    for valeur in retenues:
+        resultat = parse_ioc(valeur)
+        (analyses if resultat["ok"] else erreurs).append(resultat)
+
+    return {
+        "analyses": analyses,
+        "erreurs": erreurs,
+        "ignorees": max(0, total - len(retenues)),
+        "total": total,
+    }

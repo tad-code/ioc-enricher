@@ -10,7 +10,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ioc_parser import detect_type, parse_ioc, refang  # noqa: E402
+from ioc_parser import detect_type, decoupe_iocs, parse_ioc, parse_many, refang  # noqa: E402
 import scoring  # noqa: E402
 
 
@@ -68,6 +68,78 @@ def test_parse_ioc_detecte_une_ip_privee():
     resultat = parse_ioc("192.168.1.10")
     assert resultat["ok"] is True
     assert "privée" in resultat["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Mode « analyse par lots »
+# ---------------------------------------------------------------------------
+
+def test_decoupe_iocs_separe_lignes_et_virgules():
+    valeurs = decoupe_iocs("8.8.8.8\ngithub.com, 44d88612fea8a8f36de82e1278abb02f")
+    assert valeurs == ["8.8.8.8", "github.com", "44d88612fea8a8f36de82e1278abb02f"]
+
+
+def test_decoupe_iocs_supprime_les_doublons():
+    assert decoupe_iocs("8.8.8.8,8.8.8.8;8.8.8.8") == ["8.8.8.8"]
+
+
+def test_decoupe_iocs_borne_la_liste():
+    texte = "\n".join(f"10.0.0.{i}" for i in range(1, 20))
+    assert len(decoupe_iocs(texte, maximum=5)) == 5
+
+
+def test_parse_many_separe_valides_et_erreurs():
+    resultat = parse_many("8.8.8.8\nceci n'est pas un ioc\ngithub.com")
+    assert len(resultat["analyses"]) == 2
+    assert len(resultat["erreurs"]) == 1
+    assert resultat["ignorees"] == 0
+
+
+def test_parse_many_signale_le_surplus():
+    resultat = parse_many("\n".join(f"10.0.0.{i}" for i in range(1, 9)), maximum=5)
+    assert len(resultat["analyses"]) == 5
+    assert resultat["ignorees"] == 3
+
+
+# ---------------------------------------------------------------------------
+# Action recommandée
+# ---------------------------------------------------------------------------
+
+def test_action_pour_chaque_niveau():
+    assert scoring.action_for("CRITICAL") == "BLOQUER IMMÉDIATEMENT"
+    assert scoring.action_for("HIGH") == "BLOQUER ET INVESTIGUER"
+    assert scoring.action_for("MEDIUM") == "SURVEILLER"
+    assert scoring.action_for("LOW") == "AUCUNE ACTION"
+
+
+def test_le_resultat_contient_l_action():
+    resultat = scoring.compute_risk("ip", {"signals": [], "data": {}})
+    assert resultat["action"] in scoring.ACTIONS.values()
+
+
+# ---------------------------------------------------------------------------
+# Statistiques du tableau de bord
+# ---------------------------------------------------------------------------
+
+def test_statistiques_calculent_la_repartition():
+    from app import statistiques
+
+    historique = [
+        {"risk_level": "HIGH", "ioc_type": "ip", "risk_score": "70",
+         "source_api": "ip-api.com", "created_at": "2026-09-16T10:00:00"},
+        {"risk_level": "LOW", "ioc_type": "domain", "risk_score": 0,
+         "source_api": "RDAP", "created_at": "2026-09-16T09:00:00"},
+    ]
+    stats = statistiques(historique)
+
+    assert stats["total"] == 2
+    assert stats["par_risque"]["HIGH"] == 1
+    assert stats["par_risque"]["CRITICAL"] == 0
+    assert stats["par_type"]["domain"] == 1
+    assert stats["score_moyen"] == 35
+    assert stats["sources_distinctes"] == 2
+    assert stats["derniere"].startswith("2026-09-16T10")
+    assert stats["premiere"].startswith("2026-09-16T09")
 
 
 # ---------------------------------------------------------------------------

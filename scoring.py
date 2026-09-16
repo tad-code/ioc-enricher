@@ -26,6 +26,14 @@ REPUTATIONS = {
     "LOW": "SAIN",
 }
 
+# Action à mener, déduite du niveau : c'est la décision que l'analyste attend.
+ACTIONS = {
+    "CRITICAL": "BLOQUER IMMÉDIATEMENT",
+    "HIGH": "BLOQUER ET INVESTIGUER",
+    "MEDIUM": "SURVEILLER",
+    "LOW": "AUCUNE ACTION",
+}
+
 # Extension de domaine fréquemment détournée pour des campagnes malveillantes.
 SUSPICIOUS_TLDS = {
     "zip", "mov", "xyz", "top", "tk", "gq", "cf", "ml", "work", "click",
@@ -53,6 +61,11 @@ def reputation_for(level: str) -> str:
     Exemple : CRITICAL -> « MALVEILLANT », LOW -> « SAIN ».
     """
     return REPUTATIONS.get(level, "INCONNU")
+
+
+def action_for(level: str) -> str:
+    """Traduit un niveau de risque en action concrète pour l'analyste."""
+    return ACTIONS.get(level, "À VÉRIFIER")
 
 
 def _country_rule(enrichment: dict):
@@ -101,6 +114,7 @@ def compute_risk(ioc_type: str, enrichment: dict) -> dict:
         "score": total,
         "level": level_for(total),
         "reputation": reputation_for(level_for(total)),
+        "action": action_for(level_for(total)),
         "reasons": raisons,
         "base_score": BASE_SCORE,
         "details": signaux,

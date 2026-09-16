@@ -8,12 +8,13 @@ puis relis les encadrés en gras : c'est ce que le formateur écoutera.
 ## 1. Le pitch en 60 secondes (à savoir dire sans notes)
 
 > « IOC Enricher est une application web Python. Un analyste SOC y saisit un
-> indicateur de compromission — une adresse IP, un domaine ou un hash. Le
-> programme reconnaît tout seul le type d'indicateur, appelle une **API externe**
-> qui renvoie du **JSON**, transforme ce JSON en **score de risque justifié**,
-> **enregistre l'analyse dans Supabase** et l'affiche avec l'historique de toutes
-> les analyses précédentes. Le tout est **déployé en ligne** sur Vercel : le
-> formateur peut l'utiliser sans rien installer. »
+> indicateur de compromission — une adresse IP, un domaine ou un hash — ou
+> plusieurs d'un coup (mode par lots). Le programme reconnaît tout seul le type
+> d'indicateur, appelle des **API externes** qui renvoient du **JSON**, transforme
+> ce JSON en **réputation, score de risque justifié et action recommandée**,
+> **enregistre l'analyse dans Supabase** et l'affiche avec l'historique, un
+> tableau de bord et un export CSV. Le tout est **déployé en ligne** sur Vercel :
+> le formateur peut l'utiliser sans rien installer. »
 
 Puis tu ouvres l'URL et tu fais une démonstration en direct. **Montre les 6 cas
 de test** (section « Tests réalisés » du README).
@@ -192,13 +193,30 @@ reponse = requests.request(method, _endpoint(), params=params, json=payload,
 8. **D'où vient ma liste de pays « à risque » ?** Des rapports publics de menace.
    C'est volontairement un signal **faible** (+10) : un pays n'est jamais une
    preuve, seulement un élément parmi d'autres.
-9. **Comment tester sans Internet ?** `pytest` lance 14 tests qui n'ont besoin ni
-   de réseau ni de base (ils testent la logique : détection, validation, score).
+9. **Comment tester sans Internet ?** `pytest` lance 24 tests qui n'ont besoin ni
+   de réseau ni de base (ils testent la logique : détection, validation, score,
+   action recommandée, découpe du mode par lots, statistiques).
 10. **Comment ajouter un nouveau type d'IOC, par exemple une URL ?** J'ajoute la
     détection dans `ioc_parser.detect_type()`, une fonction
     `enrich_url()` dans `enrichment.py`, je l'ajoute au dictionnaire `repartition`
     de `enrich()`, et j'ajoute les règles correspondantes dans `scoring.py`.
     L'interface n'a pas besoin de changer : elle appelle toujours `enrich()`.
+11. **Pourquoi une limite de 5 indicateurs par lot ?** Parce que Vercel limite le
+    temps d'exécution d'une fonction (30 secondes ici). Au-delà de 5 appels d'API
+    enchaînés, je risquais l'interruption en plein traitement. `analyser_lot()`
+    surveille donc le temps écoulé (`time.monotonic()`) et rend un résultat
+    partiel propre — les indicateurs non traités sont signalés plutôt que perdus.
+    *Je préfère une limite assumée à un plantage silencieux.*
+12. **À quoi sert l'API JSON, alors qu'il y a déjà l'interface ?** À l'intégration :
+    un script, un tableur ou un futur outil de supervision peut appeler
+    `/api/analyze?ioc=…` et récupérer le verdict en JSON, sans navigateur. C'est
+    la même fonction Python qui travaille dans les deux cas.
+13. **Comment le tableau de bord calcule-t-il ses statistiques ?** Je relis
+    l'historique en base (500 dernières lignes), puis je compte en Python avec des
+    dictionnaires et des boucles : une clé par niveau de risque, une par type, une
+    par source, plus la moyenne des scores et un tri pour les sources les plus
+    utilisées. Le tableau de bord est donc la preuve que la base de données sert
+    à quelque chose.
 
 ---
 
@@ -207,15 +225,21 @@ reponse = requests.request(method, _endpoint(), params=params, json=payload,
 ```
 app.py                  → routes Flask, enchaînement des 6 étapes, erreurs HTTP
   analyze()             → la fonction principale (celle à montrer d'abord)
-ioc_parser.py           → detect_type(), refang(), parse_ioc()
+  analyser_ioc()        → le moteur : enrichir, scorer, enregistrer
+  analyser_lot()        → plusieurs IOC à la suite, avec budget de temps
+  statistiques()        → tableau de bord (boucles + dictionnaires + tri)
+  export_csv()          → export de l'historique au format CSV
+  api_analyze()         → la même analyse, mais renvoyée en JSON
+ioc_parser.py           → detect_type(), refang(), parse_ioc(), decoupe_iocs()
 enrichment.py           → enrich() → enrich_ip() / enrich_domain() / enrich_hash()
   _get()                → l'appel HTTP centralisé et la gestion des erreurs réseau
-scoring.py              → compute_risk() : signaux → score → niveau → réputation
-db.py                   → save_analysis(), list_analyses(), delete_analysis()
-templates/index.html    → l'interface (formulaire, rapport, historique)
+  _email_security()     → SPF / DMARC / MX via Google DNS-over-HTTPS
+scoring.py              → compute_risk() : signaux → score → niveau → réputation → action
+db.py                   → save_analysis(), list_analyses(), find_last_analysis()
+templates/index.html    → l'interface (formulaire, rapport, tableau de bord, historique)
 api/index.py            → point d'entrée du déploiement Vercel
 sql/schema.sql          → création de la table Supabase
-tests/test_socle.py     → les 14 tests unitaires
+tests/test_socle.py     → les 24 tests unitaires
 tools/smoke_api.py      → test des API externes en vrai
 ```
 

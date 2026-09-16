@@ -47,6 +47,13 @@ risque justifié et un historique centralisé.
 | Enrichissement par API externe | Interrogation d'une API publique selon le type d'IOC, réponse JSON exploitée. |
 | Rapport structuré | Champs présentés en clair **+ réponse JSON brute** de l'API (dépliable). |
 | Réputation et niveau de risque | Verdict de réputation (`SAIN`, `DOUTEUX`, `SUSPECT`, `MALVEILLANT`) accompagné d'un score 0-100 converti en `LOW` / `MEDIUM` / `HIGH` / `CRITICAL`, avec la liste des raisons. |
+| Action recommandée | Décision concrète : `BLOQUER IMMÉDIATEMENT`, `BLOQUER ET INVESTIGUER`, `SURVEILLER` ou `AUCUNE ACTION`. |
+| Sécurité email du domaine | SPF, DMARC et serveurs MX récupérés via Google DNS-over-HTTPS : un domaine sans DMARC est facilement usurpable (phishing). |
+| Analyse par lots | Jusqu'à 5 indicateurs collés d'un coup (un par ligne), avec budget de temps pour respecter la limite d'exécution de Vercel. |
+| Détection de doublon | Si l'IOC a déjà été analysé, l'application affiche la date, le score précédent et l'évolution. |
+| Tableau de bord | Nombre d'analyses, score moyen, répartition par niveau de risque et par type, sources les plus utilisées. |
+| Export CSV | Téléchargement de tout l'historique (séparateur `;` et BOM, prêt pour Excel). |
+| API JSON | `GET /api/analyze?ioc=…` et `GET /api/history` : le moteur est utilisable depuis un script ou un tableur. |
 | Persistance Supabase | Chaque analyse est enregistrée (IOC, type, score, source, JSON, date). |
 | Historique | Les 25 dernières analyses sont affichées dans un tableau. |
 | Suppression | Chaque ligne de l'historique peut être supprimée (bouton « Supprimer »). |
@@ -61,7 +68,7 @@ risque justifié et un historique centralisé.
 | Requêtes HTTP | **requests** | Bibliothèque standard de fait pour appeler une API REST. |
 | Base de données | **Supabase** (PostgreSQL) | Demandée par le sujet, avec API REST intégrée. |
 | Configuration | **python-dotenv** + variables d'environnement | Aucune clé dans le code. |
-| Tests | **pytest** | 16 tests unitaires automatisés. |
+| Tests | **pytest** | 24 tests unitaires automatisés. |
 | Hébergement | **Vercel** | Déploiement public gratuit en une commande. |
 
 ## 5. API utilisées
@@ -75,6 +82,7 @@ Une API différente par type d'IOC, **toutes gratuites et sans clé obligatoire*
 | Adresse IP | `ip-api.com` | Pays, ville, FAI, organisation, ASN, datacenter, proxy/VPN/Tor |
 | *(option)* IP | `AbuseIPDB` | Score d'abus communautaire, nombre de signalements |
 | Nom de domaine | `rdap.org` (RDAP) | Registrar, dates de création/expiration, statut, serveurs de noms |
+| Nom de domaine (email) | `dns.google` (DNS-over-HTTPS) | SPF, DMARC et serveurs MX — détection d'un domaine usurpable en phishing |
 | Empreinte | `hashlookup.circl.lu` | Nom de fichier, éditeur, indice de confiance (base CIRCL) |
 
 ### 5.2 Exemple détaillé — `ip-api.com`
@@ -232,7 +240,8 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 | Formulaire de saisie et historique | [`docs/capture-accueil.png`](docs/capture-accueil.png) |
 | Rapport d'analyse d'une IP (score HIGH) | [`docs/capture-rapport.png`](docs/capture-rapport.png) |
 | Réponse JSON brute de l'API (dépliée) | [`docs/capture-json.png`](docs/capture-json.png) |
-| Analyse d'un nom de domaine | [`docs/capture-domaine.png`](docs/capture-domaine.png) |
+| Analyse d'un nom de domaine (SPF / DMARC) | [`docs/capture-domaine.png`](docs/capture-domaine.png) |
+| Mode « analyse par lots » | [`docs/capture-lot.png`](docs/capture-lot.png) |
 
 ![Rapport d'analyse](docs/capture-rapport.png)
 
@@ -262,6 +271,18 @@ vercel --prod
 | Protection d'accès | préversions protégées, production publique (accès libre voulu pour l'évaluation) |
 | Sonde | https://ioc-enricher-delta.vercel.app/health |
 
+### Routes exposées
+
+| Route | Rôle |
+|---|---|
+| `GET /` | Interface web : formulaire, tableau de bord, historique, API documentée |
+| `POST /analyze` | Analyse d'un indicateur — ou d'un lot de 5 maximum |
+| `POST /delete/<id>` | Suppression d'une analyse de l'historique |
+| `GET /export.csv` | Export CSV de tout l'historique |
+| `GET /api/analyze?ioc=8.8.8.8&save=0` | Analyse renvoyée en JSON (API pour un autre outil) |
+| `GET /api/history?limit=25` | Historique renvoyé en JSON |
+| `GET /health` | Sonde de supervision (réponse minimale) |
+
 ---
 
 ## 🧪 Tests réalisés
@@ -270,12 +291,13 @@ vercel --prod
 
 ```bash
 python -m pytest -v
-# 16 passed
+# 24 passed
 ```
 
 Ils couvrent : la détection du type d'IOC, le *refang*, la saisie vide, la
 saisie invalide, la normalisation (`www.`, casse), les fourchettes de score, le
-verdict de réputation et le bornage 0-100.
+verdict de réputation, l'action recommandée, la découpe du mode « par lots »
+(séparateurs, doublons, limite) et le calcul des statistiques du tableau de bord.
 
 ### Test des API en conditions réelles
 
@@ -298,7 +320,7 @@ Résultat obtenu le 16/09/2026 :
 ### Test de l'application déployée (bout en bout)
 
 Après déploiement, l'application publique a été testée automatiquement par script
-(appels HTTP réels sur l'URL de production) : **31 vérifications, 31 réussies**.
+(appels HTTP réels sur l'URL de production) : **43 vérifications, 43 réussies**.
 
 | Vérification | Résultat |
 |---|---|
@@ -308,6 +330,14 @@ Après déploiement, l'application publique a été testée automatiquement par 
 | Réponse JSON brute affichée | ✅ |
 | Verdict de réputation affiché (`SAIN` → `MALVEILLANT`) | ✅ |
 | Colonne « Réputation » dans l'historique | ✅ |
+| Mode « analyse par lots » (3 indicateurs en un envoi) | ✅ tableau de résultats complet |
+| Sécurité email du domaine (SPF / DMARC / MX) | ✅ |
+| Action recommandée affichée | ✅ |
+| Détection de doublon (« Déjà analysé ») | ✅ |
+| Tableau de bord (score moyen + répartitions) | ✅ |
+| API `/api/analyze` en JSON | ✅ `DOUTEUX / SURVEILLER` |
+| API `/api/history` en JSON | ✅ |
+| Export CSV | ✅ `text/csv` |
 | Ligne réellement écrite dans Supabase | ✅ (vérifiée par une requête REST indépendante) |
 | Analyse d'un domaine et d'un hash | ✅ HTTP 200 |
 | Saisie invalide / saisie vide | ✅ HTTP 400 + message explicite |

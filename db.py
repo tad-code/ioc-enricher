@@ -146,6 +146,44 @@ def delete_analysis(row_id: int) -> bool:
     return True
 
 
+def find_last_analysis(ioc: str):
+    """Retourne la dernière analyse connue pour cet IOC, ou None.
+
+    Sert à repérer les indicateurs « déjà vus » : un analyste doit savoir que
+    le même IOC a déjà été qualifié, et comparer les deux scores.
+    """
+    try:
+        reponse = _call("GET", params={
+            "select": "id,ioc,risk_level,risk_score,created_at,summary",
+            "ioc": f"eq.{ioc}",
+            "order": "created_at.desc",
+            "limit": 1,
+        })
+        donnees = reponse.json()
+        if isinstance(donnees, list) and donnees:
+            return donnees[0]
+    except (DatabaseError, ValueError):
+        pass
+    return None
+
+
+def list_analyses_large(limit: int = 500):
+    """Historique élargi, utilisé pour calculer les statistiques."""
+    try:
+        reponse = _call("GET", params={
+            "select": "id,ioc,ioc_type,risk_level,risk_score,source_api,summary,created_at",
+            "order": "created_at.desc",
+            "limit": limit,
+        })
+        donnees = reponse.json()
+        return (donnees if isinstance(donnees, list) else []), None
+    except DatabaseError as exc:
+        log.warning("Lecture étendue impossible : %s", exc)
+        return [], str(exc)
+    except ValueError:
+        return [], "Réponse illisible de la base de données (JSON invalide)."
+
+
 def count_analyses() -> int:
     """Nombre total d'analyses enregistrées (utilise l'en-tête Content-Range)."""
     try:

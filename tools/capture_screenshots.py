@@ -32,7 +32,7 @@ with sync_playwright() as play:
     print("capture-accueil.png")
 
     # 2. Rapport d'analyse d'une adresse IP
-    page.fill("input[name=ioc]", "185.220.101.1")
+    page.fill("textarea[name=ioc]", "185.220.101.1")
     page.click("button[type=submit]")
     page.wait_for_selector("text=Justification du score", timeout=90_000)
     page.screenshot(path=capture("capture-rapport.png"), full_page=True)
@@ -45,11 +45,20 @@ with sync_playwright() as play:
     print("capture-json.png")
 
     # 4. Analyse d'un domaine
-    page.fill("input[name=ioc]", "github.com")
+    page.fill("textarea[name=ioc]", "github.com")
     page.click("button[type=submit]")
     page.wait_for_selector("text=Justification du score", timeout=90_000)
     page.screenshot(path=capture("capture-domaine.png"), full_page=True)
     print("capture-domaine.png")
+
+    # 5. Mode « analyse par lots »
+    page.goto(BASE, wait_until="networkidle")
+    page.fill("textarea[name=ioc]",
+              "185.220.101.1\ngithub.com\npromo-cadeau-gratuit.xyz\n44d88612fea8a8f36de82e1278abb02f")
+    page.click("button[type=submit]")
+    page.wait_for_selector("text=Résultats du lot", timeout=180_000)
+    page.screenshot(path=capture("capture-lot.png"), full_page=True)
+    print("capture-lot.png")
 
     navigateur.close()
 
