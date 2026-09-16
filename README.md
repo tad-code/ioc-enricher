@@ -9,6 +9,7 @@ analyses est conservé dans une base de données PostgreSQL hébergée sur
 
 > 🔗 **Application en ligne :** https://ioc-enricher-delta.vercel.app
 > 📦 **Dépôt GitHub :** https://github.com/tad-code/ioc-enricher
+> 📄 **Rapport de projet :** [`docs/Rapport-IOC-Enricher.pdf`](docs/Rapport-IOC-Enricher.pdf) (17 pages) — version Word modifiable : [`docs/Rapport-IOC-Enricher.docx`](docs/Rapport-IOC-Enricher.docx)
 > 🎓 **Auteur :** Yannick Konan
 
 ---
