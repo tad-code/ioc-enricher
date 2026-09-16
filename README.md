@@ -6,7 +6,8 @@ Application web Python qui permet à un analyste SOC d'enrichir un indicateur de
 compromission (IOC), d'obtenir un niveau de risque justifié et de conserver
 l'historique des analyses dans une base de données **Supabase**.
 
-> 🔗 **Application en ligne :** _URL ajoutée après déploiement_
+> 🔗 **Application en ligne :** https://ioc-enricher-delta.vercel.app
+> 📦 **Dépôt GitHub :** https://github.com/tad-code/ioc-enricher
 > 🎓 **Auteur :** Yannick Konan
 
 ---
@@ -127,7 +128,7 @@ if brut.get("proxy"):                                                   # 4. exp
 
 ```bash
 # 1. Récupérer le projet
-git clone https://github.com/<votre-compte>/ioc-enricher.git
+git clone https://github.com/tad-code/ioc-enricher.git
 cd ioc-enricher
 
 # 2. Créer un environnement virtuel Python
@@ -225,19 +226,38 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 
 | Écran | Fichier |
 |---|---|
-| Formulaire et historique | `docs/capture-accueil.png` |
-| Rapport d'analyse d'une IP | `docs/capture-rapport.png` |
-| Table `ioc_analyses` dans Supabase | `docs/capture-supabase.png` |
+| Formulaire de saisie et historique | [`docs/capture-accueil.png`](docs/capture-accueil.png) |
+| Rapport d'analyse d'une IP (score HIGH) | [`docs/capture-rapport.png`](docs/capture-rapport.png) |
+| Réponse JSON brute de l'API (dépliée) | [`docs/capture-json.png`](docs/capture-json.png) |
+| Analyse d'un nom de domaine | [`docs/capture-domaine.png`](docs/capture-domaine.png) |
+
+![Rapport d'analyse](docs/capture-rapport.png)
 
 ## 10. URL de démonstration
 
-**https://** _ajoutée après déploiement_
+# 🔗 https://ioc-enricher-delta.vercel.app
+
+L'application est **publiquement accessible** : le formateur peut l'ouvrir sans
+rien installer. Testée en ligne : page d'accueil, analyse d'IP / domaine / hash,
+enregistrement dans Supabase, historique, suppression, cas d'erreur.
 
 Déploiement réalisé avec la CLI Vercel :
 
 ```bash
+vercel link --project ioc-enricher
+vercel env add SUPABASE_URL production        # variables saisies hors du code
+vercel env add SUPABASE_ANON_KEY production
 vercel --prod
 ```
+
+| Élément | Valeur |
+|---|---|
+| Hébergeur | Vercel (offre gratuite) |
+| Projet | `ioc-enricher` |
+| Type d'exécution | Fonction Python *serverless* (`api/index.py`, `maxDuration: 30s`) |
+| Variables d'environnement | `SUPABASE_URL`, `SUPABASE_ANON_KEY` (Production) |
+| Protection d'accès | désactivée (l'application doit être publique) |
+| Sonde | https://ioc-enricher-delta.vercel.app/health |
 
 ---
 
@@ -271,6 +291,24 @@ Résultat obtenu le 16/09/2026 :
 [OK]   00000000000000000000000000000000     CIRCL hashlookup  HTTP 404  -> MEDIUM (30/100)
 6/6 cas traités avec succès.
 ```
+
+### Test de l'application déployée (bout en bout)
+
+Après déploiement, l'application publique a été testée automatiquement par script
+(appels HTTP réels sur l'URL de production) : **19 vérifications, 19 réussies**.
+
+| Vérification | Résultat |
+|---|---|
+| Page d'accueil servie par Flask | ✅ HTTP 200, interface complète |
+| Sonde `/health` | ✅ `supabase_configured: true` |
+| Analyse d'une IP → rapport affiché | ✅ score HIGH (70/100) |
+| Réponse JSON brute affichée | ✅ |
+| Ligne réellement écrite dans Supabase | ✅ (vérifiée par une requête REST indépendante) |
+| Analyse d'un domaine et d'un hash | ✅ HTTP 200 |
+| Saisie invalide / saisie vide | ✅ HTTP 400 + message explicite |
+| Erreur API (IP privée) | ✅ HTTP 502 + « private range », pas de trace Python |
+| Page inconnue | ✅ HTTP 404 personnalisée |
+| Suppression d'une analyse | ✅ ligne absente de la base après suppression |
 
 ### Les 6 cas exigés par le sujet
 

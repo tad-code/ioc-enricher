@@ -1,0 +1,15 @@
+# Fichiers exclus de l'archive envoyée à Vercel (build plus rapide et plus léger).
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+.git/
+.github/
+tests/
+tools/
+docs/
+.vercel/
+.env

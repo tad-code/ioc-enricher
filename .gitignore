@@ -1,6 +1,7 @@
 # Secrets : ne jamais publier les clés
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
 
 # Python

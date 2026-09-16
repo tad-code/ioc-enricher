@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/index.py": {
-      "includeFiles": "{app.py,ioc_parser.py,enrichment.py,scoring.py,db.py,templates/**}"
+      "includeFiles": "{app.py,ioc_parser.py,enrichment.py,scoring.py,db.py,templates/**}",
+      "maxDuration": 30
     }
   },
   "routes": [
