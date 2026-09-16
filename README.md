@@ -315,6 +315,21 @@ Après déploiement, l'application publique a été testée automatiquement par 
 | Page inconnue | ✅ HTTP 404 personnalisée |
 | Suppression d'une analyse | ✅ ligne absente de la base après suppression |
 
+### Preuve de fermeture de la base
+
+Test rejoué **depuis l'extérieur**, avec la clé *publique* du projet — celle qui
+peut circuler sans risque :
+
+| Tentative depuis l'extérieur | Résultat obtenu |
+|---|---|
+| Lire toute la table | HTTP 200 — **0 ligne** visible |
+| Insérer une ligne | HTTP **401** — `42501 : new row violates row-level security policy` |
+| Supprimer toute la table | HTTP 204, mais **0 ligne affectée** (les lignes sont filtrées avant la suppression) |
+| Les analyses déjà enregistrées | **Toujours présentes** après les trois tentatives |
+
+Dans le même temps, l'application (clé secrète conservée côté serveur) continue
+normalement : analyse, enregistrement, historique et suppression fonctionnent.
+
 ### Les 6 cas exigés par le sujet
 
 | Cas | Comment le tester | Résultat attendu |
@@ -333,7 +348,7 @@ données et hébergement.
 
 | Faille / risque identifié | Correction apportée |
 |---|---|
-| La table Supabase était ouverte en lecture, en insertion **et en suppression** au rôle public : quiconque possédait la clé publique pouvait vider la base | L'application utilise désormais une **clé secrète côté serveur**, et `sql/schema.sql` **supprime** les politiques RLS ouvertes : l'API REST publique ne renvoie alors plus rien. *(Étape finale : ajouter `SUPABASE_SECRET_KEY` puis ré-exécuter `sql/schema.sql`.)* |
+| La table Supabase était ouverte en lecture, en insertion **et en suppression** au rôle public : quiconque possédait la clé publique pouvait vider la base | L'application parle à la base avec une **clé secrète côté serveur** et les politiques RLS ouvertes ont été supprimées (`sql/schema.sql`) : l'API REST publique ne renvoie plus rien. **Vérifié en ligne** — voir « Preuve de fermeture de la base ». |
 | `requests` **2.32.3** vulnérable (CVE-2024-47081 : fuite des identifiants `netrc`) | Mise à jour vers `requests==2.34.2` |
 | Flask **3.0.3** et python-dotenv **1.0.1** anciens | Mise à jour vers Flask 3.1.3 (Werkzeug 3.1.8) et python-dotenv 1.2.3 |
 | Aucun en-tête de sécurité HTTP | HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `X-Robots-Tag` et **CSP restrictive** (`vercel.json`) |
