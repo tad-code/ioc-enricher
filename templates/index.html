@@ -71,6 +71,10 @@
     .risk-medium { background: rgba(232,197,71,.16); color: var(--medium); border: 1px solid rgba(232,197,71,.4); }
     .risk-high { background: rgba(240,140,58,.16); color: var(--high); border: 1px solid rgba(240,140,58,.4); }
     .risk-critical { background: rgba(239,77,90,.18); color: var(--critical); border: 1px solid rgba(239,77,90,.45); }
+    .risk-text-low { color: var(--low); }
+    .risk-text-medium { color: var(--medium); }
+    .risk-text-high { color: var(--high); }
+    .risk-text-critical { color: var(--critical); }
     .type-chip {
       background: var(--panel-2); border: 1px solid var(--line); color: var(--txt);
       padding: 4px 10px; border-radius: 7px; font-size: 12px; text-transform: uppercase; letter-spacing: .8px;
@@ -142,8 +146,10 @@
         </div>
         {% if result.detail %}<div class="hint">{{ result.detail }}</div>{% endif %}
       </div>
-      <div style="text-align:right; min-width:210px">
-        <span class="badge risk-{{ result.risque.level|lower }}">{{ result.risque.level }}</span>
+      <div style="text-align:right; min-width:230px">
+        <div class="hint" style="margin:0">Réputation</div>
+        <div class="risk-text-{{ result.risque.level|lower }}" style="font-size:22px; font-weight:700; letter-spacing:.5px">{{ result.risque.reputation }}</div>
+        <span class="badge risk-{{ result.risque.level|lower }}" style="margin-top:8px">RISQUE {{ result.risque.level }}</span>
         <div class="ioc-value" style="font-size:26px; margin-top:6px">{{ result.risque.score }}<span style="font-size:15px; color:var(--muted)">/100</span></div>
         <div class="meter"><span style="width: {{ result.risque.score }}%"></span></div>
       </div>
@@ -188,8 +194,8 @@
       <table>
         <thead>
           <tr>
-            <th>#</th><th>IOC</th><th>Type</th><th>Source API</th>
-            <th>Risque</th><th>Score</th><th>Date (UTC)</th><th></th>
+            <th>#</th><th>IOC</th><th>Type</th><th>Réputation</th><th>Risque</th>
+            <th>Score</th><th>Source API</th><th>Date (UTC)</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -198,9 +204,10 @@
             <td class="mono">{{ ligne.id }}</td>
             <td class="mono" style="word-break:break-all">{{ ligne.ioc }}</td>
             <td>{{ types.get(ligne.ioc_type, ligne.ioc_type) }}</td>
-            <td class="mono">{{ ligne.source_api or '—' }}</td>
+            <td class="mono">{{ (ligne.summary or {}).get('reputation', '—') }}</td>
             <td><span class="badge risk-{{ (ligne.risk_level or 'low')|lower }}">{{ ligne.risk_level }}</span></td>
             <td class="mono">{{ ligne.risk_score }}</td>
+            <td class="mono">{{ ligne.source_api or '—' }}</td>
             <td class="mono">{{ (ligne.created_at or '')[:19].replace('T', ' ') }}</td>
             <td>
               <form action="/delete/{{ ligne.id }}" method="post"

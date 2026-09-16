@@ -34,7 +34,7 @@ for ioc, type_attendu in CAS:
         risque = scoring.compute_risk(type_attendu, resultat)
         succes += 1
         print(f"[OK]   {ioc:<42} {resultat['source']:<20} HTTP {resultat['http_status']}  "
-              f"-> {risque['level']} ({risque['score']}/100)")
+              f"-> {risque['reputation']} / {risque['level']} ({risque['score']}/100)")
         for raison in risque["reasons"][:3]:
             print(f"         · {raison}")
     except EnrichmentError as exc:

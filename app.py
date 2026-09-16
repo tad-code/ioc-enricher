@@ -139,6 +139,7 @@ def analyze():
             risk_score=risque["score"],
             source_api=enrichissement["source"],
             summary={
+                "reputation": risque["reputation"],
                 "http_status": enrichissement["http_status"],
                 "endpoint": enrichissement["endpoint"],
                 "fields": enrichissement["fields"],

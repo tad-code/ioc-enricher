@@ -17,6 +17,15 @@ BASE_SCORE = 10
 # Fourchettes -> niveau. On parcourt du plus élevé au plus faible.
 LEVELS = ((75, "CRITICAL"), (50, "HIGH"), (25, "MEDIUM"), (0, "LOW"))
 
+# Verdict de réputation associé au niveau : c'est la conclusion que l'analyste
+# lit en premier (« ce domaine est-il fiable, oui ou non ? »).
+REPUTATIONS = {
+    "CRITICAL": "MALVEILLANT",
+    "HIGH": "SUSPECT",
+    "MEDIUM": "DOUTEUX",
+    "LOW": "SAIN",
+}
+
 # Extension de domaine fréquemment détournée pour des campagnes malveillantes.
 SUSPICIOUS_TLDS = {
     "zip", "mov", "xyz", "top", "tk", "gq", "cf", "ml", "work", "click",
@@ -36,6 +45,14 @@ def level_for(score: int) -> str:
         if score >= seuil:
             return niveau
     return "LOW"
+
+
+def reputation_for(level: str) -> str:
+    """Traduit un niveau de risque en verdict de réputation lisible.
+
+    Exemple : CRITICAL -> « MALVEILLANT », LOW -> « SAIN ».
+    """
+    return REPUTATIONS.get(level, "INCONNU")
 
 
 def _country_rule(enrichment: dict):
@@ -83,6 +100,7 @@ def compute_risk(ioc_type: str, enrichment: dict) -> dict:
     return {
         "score": total,
         "level": level_for(total),
+        "reputation": reputation_for(level_for(total)),
         "reasons": raisons,
         "base_score": BASE_SCORE,
         "details": signaux,

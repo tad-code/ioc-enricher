@@ -81,6 +81,18 @@ def test_niveau_par_fourchette():
     assert scoring.level_for(90) == "CRITICAL"
 
 
+def test_reputation_associee_au_niveau():
+    assert scoring.reputation_for("CRITICAL") == "MALVEILLANT"
+    assert scoring.reputation_for("HIGH") == "SUSPECT"
+    assert scoring.reputation_for("MEDIUM") == "DOUTEUX"
+    assert scoring.reputation_for("LOW") == "SAIN"
+
+
+def test_le_resultat_contient_la_reputation():
+    resultat = scoring.compute_risk("ip", {"signals": [], "data": {}})
+    assert resultat["reputation"] in ("MALVEILLANT", "SUSPECT", "DOUTEUX", "SAIN")
+
+
 def test_score_augmente_avec_les_signaux():
     faible = scoring.compute_risk("ip", {"signals": [{"points": 5, "label": "test"}], "data": {}})
     fort = scoring.compute_risk("ip", {"signals": [{"points": 70, "label": "test"}], "data": {}})

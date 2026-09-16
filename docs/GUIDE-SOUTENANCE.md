@@ -184,8 +184,11 @@ reponse = requests.request(method, _endpoint(), params=params, json=payload,
 7. **Pourquoi un score de risque plutôt qu'un simple « oui/non » ?** Un IOC n'est
    jamais binaire : je pars d'une base de 10 points et chaque signal ajoute des
    points (proxy +35, datacenter +25, domaine de moins de 30 jours +30…), avec un
-   bonus négatif si un signal est rassurant. Le score est **borné à 0-100** et
-   traduit en 4 niveaux, et chaque point est **affiché avec sa justification**.
+   bonus négatif si un signal est rassurant. Le score est **borné à 0-100**, puis
+   traduit en **verdict de réputation** — `SAIN`, `DOUTEUX`, `SUSPECT`,
+   `MALVEILLANT` — affiché en grand, et en **niveau de risque** (`LOW` à
+   `CRITICAL`), et chaque point est **affiché avec sa justification**.
+   *(Réputation = la conclusion lisible ; niveau de risque = la gradation technique.)*
 8. **D'où vient ma liste de pays « à risque » ?** Des rapports publics de menace.
    C'est volontairement un signal **faible** (+10) : un pays n'est jamais une
    preuve, seulement un élément parmi d'autres.
@@ -207,7 +210,7 @@ app.py                  → routes Flask, enchaînement des 6 étapes, erreurs H
 ioc_parser.py           → detect_type(), refang(), parse_ioc()
 enrichment.py           → enrich() → enrich_ip() / enrich_domain() / enrich_hash()
   _get()                → l'appel HTTP centralisé et la gestion des erreurs réseau
-scoring.py              → compute_risk() : signaux → score → niveau
+scoring.py              → compute_risk() : signaux → score → niveau → réputation
 db.py                   → save_analysis(), list_analyses(), delete_analysis()
 templates/index.html    → l'interface (formulaire, rapport, historique)
 api/index.py            → point d'entrée du déploiement Vercel

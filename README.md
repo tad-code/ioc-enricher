@@ -46,7 +46,7 @@ risque justifié et un historique centralisé.
 | Prise en charge des IOC neutralisés | `185[.]10[.]10[.]5` et `hxxps://evil[.]com` sont ré-acceptés automatiquement (*refang*). |
 | Enrichissement par API externe | Interrogation d'une API publique selon le type d'IOC, réponse JSON exploitée. |
 | Rapport structuré | Champs présentés en clair **+ réponse JSON brute** de l'API (dépliable). |
-| Score de risque justifié | Score 0-100 converti en `LOW` / `MEDIUM` / `HIGH` / `CRITICAL`, avec la liste des raisons. |
+| Réputation et niveau de risque | Verdict de réputation (`SAIN`, `DOUTEUX`, `SUSPECT`, `MALVEILLANT`) accompagné d'un score 0-100 converti en `LOW` / `MEDIUM` / `HIGH` / `CRITICAL`, avec la liste des raisons. |
 | Persistance Supabase | Chaque analyse est enregistrée (IOC, type, score, source, JSON, date). |
 | Historique | Les 25 dernières analyses sont affichées dans un tableau. |
 | Suppression | Chaque ligne de l'historique peut être supprimée (bouton « Supprimer »). |
@@ -61,7 +61,7 @@ risque justifié et un historique centralisé.
 | Requêtes HTTP | **requests** | Bibliothèque standard de fait pour appeler une API REST. |
 | Base de données | **Supabase** (PostgreSQL) | Demandée par le sujet, avec API REST intégrée. |
 | Configuration | **python-dotenv** + variables d'environnement | Aucune clé dans le code. |
-| Tests | **pytest** | 14 tests unitaires automatisés. |
+| Tests | **pytest** | 16 tests unitaires automatisés. |
 | Hébergement | **Vercel** | Déploiement public gratuit en une commande. |
 
 ## 5. API utilisées
@@ -270,12 +270,12 @@ vercel --prod
 
 ```bash
 python -m pytest -v
-# 14 passed
+# 16 passed
 ```
 
 Ils couvrent : la détection du type d'IOC, le *refang*, la saisie vide, la
-saisie invalide, la normalisation (`www.`, casse), les fourchettes de score et
-le bornage 0-100.
+saisie invalide, la normalisation (`www.`, casse), les fourchettes de score, le
+verdict de réputation et le bornage 0-100.
 
 ### Test des API en conditions réelles
 
@@ -286,19 +286,19 @@ python tools/smoke_api.py
 Résultat obtenu le 16/09/2026 :
 
 ```
-[OK]   8.8.8.8                              ip-api.com        HTTP 200  -> MEDIUM (35/100)
-[OK]   185.220.101.1                        ip-api.com        HTTP 200  -> HIGH (70/100)
-[OK]   github.com                           RDAP (rdap.org)   HTTP 200  -> LOW (0/100)
-[OK]   ce-domaine-nexiste-pas-1234567890.com RDAP (rdap.org)  HTTP 404  -> HIGH (55/100)
-[OK]   44d88612fea8a8f36de82e1278abb02f     CIRCL hashlookup  HTTP 200  -> LOW (0/100)
-[OK]   00000000000000000000000000000000     CIRCL hashlookup  HTTP 404  -> MEDIUM (30/100)
+[OK]   8.8.8.8                              ip-api.com        HTTP 200  -> DOUTEUX / MEDIUM (35/100)
+[OK]   185.220.101.1                        ip-api.com        HTTP 200  -> SUSPECT / HIGH (70/100)
+[OK]   github.com                           RDAP (rdap.org)   HTTP 200  -> SAIN / LOW (0/100)
+[OK]   ce-domaine-nexiste-pas-1234567890.com RDAP (rdap.org)  HTTP 404  -> SUSPECT / HIGH (55/100)
+[OK]   44d88612fea8a8f36de82e1278abb02f     CIRCL hashlookup  HTTP 200  -> SAIN / LOW (0/100)
+[OK]   00000000000000000000000000000000     CIRCL hashlookup  HTTP 404  -> SAIN / LOW (20/100)
 6/6 cas traités avec succès.
 ```
 
 ### Test de l'application déployée (bout en bout)
 
 Après déploiement, l'application publique a été testée automatiquement par script
-(appels HTTP réels sur l'URL de production) : **19 vérifications, 19 réussies**.
+(appels HTTP réels sur l'URL de production) : **31 vérifications, 31 réussies**.
 
 | Vérification | Résultat |
 |---|---|
@@ -306,6 +306,8 @@ Après déploiement, l'application publique a été testée automatiquement par 
 | Sonde `/health` | ✅ HTTP 200 — `{"status": "ok", "service": "ioc-enricher"}` |
 | Analyse d'une IP → rapport affiché | ✅ score HIGH (70/100) |
 | Réponse JSON brute affichée | ✅ |
+| Verdict de réputation affiché (`SAIN` → `MALVEILLANT`) | ✅ |
+| Colonne « Réputation » dans l'historique | ✅ |
 | Ligne réellement écrite dans Supabase | ✅ (vérifiée par une requête REST indépendante) |
 | Analyse d'un domaine et d'un hash | ✅ HTTP 200 |
 | Saisie invalide / saisie vide | ✅ HTTP 400 + message explicite |
