@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titre %}API JSON{% endblock %}
+
+{% block contenu %}
+
+  <section class="card endpoints">
+    <h2>API JSON — utiliser le moteur depuis un autre outil</h2>
+    <p class="hint" style="margin-top:0">
+      Le moteur d'enrichissement est aussi exposé en JSON : un script, un tableur ou un
+      futur outil de supervision peut l'appeler sans passer par l'interface web.
+      Toutes ces routes renvoient du JSON (sauf l'export CSV).
+    </p>
+
+    <table>
+      <thead><tr><th>Route</th><th>Rôle</th><th>Exemple</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">GET /api/analyze</td>
+          <td>Analyse un IOC et renvoie le rapport complet en JSON<br>
+              <span class="hint" style="margin:0">(<code>save=0</code> pour analyser sans enregistrer)</span></td>
+          <td class="mono"><a href="/api/analyze?ioc=8.8.8.8&amp;save=0">/api/analyze?ioc=8.8.8.8&amp;save=0</a></td>
+        </tr>
+        <tr>
+          <td class="mono">GET /api/history</td>
+          <td>Historique des analyses (1 à 100 entrées)</td>
+          <td class="mono"><a href="/api/history?limit=5">/api/history?limit=5</a></td>
+        </tr>
+        <tr>
+          <td class="mono">GET /export.csv</td>
+          <td>Export complet de l'historique, ouvrable dans Excel / LibreOffice</td>
+          <td class="mono"><a href="/export.csv">/export.csv</a></td>
+        </tr>
+        <tr>
+          <td class="mono">GET /health</td>
+          <td>Sonde de supervision (réponse minimale, sans information de configuration)</td>
+          <td class="mono"><a href="/health">/health</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Exemple d'appel</h2>
+    <table>
+      <tbody>
+        <tr><td class="k">Méthode</td><td class="mono">GET</td></tr>
+        <tr><td class="k">URL</td><td class="mono">/api/analyze?ioc=185.220.101.1&amp;save=0</td></tr>
+        <tr><td class="k">Réponse</td><td class="mono">application/json</td></tr>
+        <tr><td class="k">Codes</td><td class="mono">200 succès · 400 IOC invalide · 502 API externe injoignable</td></tr>
+      </tbody>
+    </table>
+    <p class="hint" style="margin-top:12px">Réponse type (extrait) :</p>
+    <pre>{
+  "ok": true,
+  "ioc": "185.220.101.1",
+  "type": "ip",
+  "reputation": "SUSPECT",
+  "action": "BLOQUER ET INVESTIGUER",
+  "risque": { "niveau": "HIGH", "score": 70, "raisons": ["..."] },
+  "source": "ip-api.com",
+  "http_status": 200,
+  "endpoint": "http://ip-api.com/json/185.220.101.1?fields=...",
+  "informations": [["Pays", "Germany"], ["Proxy / VPN", "oui"]],
+  "enregistre": false
+}</pre>
+  </section>
+
+  <section class="card">
+    <h2>Depuis une ligne de commande</h2>
+    <p class="hint" style="margin-top:0">N'importe quel outil capable de faire une requête HTTP peut utiliser l'API :</p>
+    <pre>curl "https://ioc-enricher-delta.vercel.app/api/analyze?ioc=8.8.8.8&amp;save=0"</pre>
+    <pre>python -c "import requests; print(requests.get('https://ioc-enricher-delta.vercel.app/api/analyze', params={'ioc':'8.8.8.8','save':'0'}).json())"</pre>
+  </section>
+
+{% endblock %}

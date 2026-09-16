@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block titre %}Analyser un indicateur{% endblock %}
+
+{% block contenu %}
+
+  <!-- ===================== FORMULAIRE ===================== -->
+  <section class="card">
+    <h2>Analyser un indicateur (ou plusieurs)</h2>
+    <form class="search" action="/analyze" method="post">
+      <textarea name="ioc" rows="2" autocomplete="off" autofocus maxlength="512"
+                placeholder="185.10.10.5&#10;evil-domain.com&#10;44d88612fea8a8f36de82e1278abb02f">{{ form_value }}</textarea>
+      <button type="submit">Enrichir</button>
+    </form>
+    <p class="hint">
+      <b>Formats acceptés :</b> adresse IP (v4/v6), nom de domaine, empreinte MD5 / SHA1 / SHA256.
+      Les IOC neutralisés sont acceptés (<code>185[.]10[.]10[.]5</code> ou <code>hxxps://evil[.]com</code>).
+      <br>
+      <b>Mode lot :</b> collez plusieurs indicateurs (un par ligne, ou séparés par des virgules) —
+      jusqu'à {{ max_lot }} par analyse.
+    </p>
+  </section>
+
+  {% if error %}<div class="alert error"><b>⚠ {{ error }}</b></div>{% endif %}
+  {% if notice %}<div class="alert ok">{{ notice }}</div>{% endif %}
+
+  <!-- ===================== RÉSULTAT SIMPLE ===================== -->
+  {% if result %}
+  <section class="card">
+    <div class="row">
+      <div>
+        <div class="ioc-value mono">{{ result.ioc }}</div>
+        <div style="margin-top:8px">
+          <span class="type-chip">{{ result.ioc_type_label }}</span>
+          <span class="pill">{{ result.enrichissement.source }}</span>
+          <span class="pill">HTTP {{ result.enrichissement.http_status }}</span>
+          {% if result.saved %}<span class="pill on">Analyse enregistrée</span>
+          {% else %}<span class="pill off">Non enregistrée</span>{% endif %}
+        </div>
+        {% if result.detail %}<div class="hint">{{ result.detail }}</div>{% endif %}
+      </div>
+      <div style="text-align:right; min-width:230px">
+        <div class="hint" style="margin:0">Réputation</div>
+        <div class="risk-text-{{ result.risque.level|lower }}" style="font-size:22px; font-weight:700; letter-spacing:.5px">{{ result.risque.reputation }}</div>
+        <span class="badge risk-{{ result.risque.level|lower }}" style="margin-top:8px">RISQUE {{ result.risque.level }}</span>
+        <div class="ioc-value" style="font-size:26px; margin-top:6px">{{ result.risque.score }}<span style="font-size:15px; color:var(--muted)">/100</span></div>
+        <div class="meter"><span style="width: {{ result.risque.score }}%"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="action action-{{ result.risque.level|lower }}">
+    <span class="action-label">Action recommandée</span>
+    <span class="action-value">{{ result.risque.action }}</span>
+  </div>
+
+  {% if result.precedente %}
+  <div class="alert info">
+    <b>Déjà analysé</b> le {{ (result.precedente.created_at or '')[:19].replace('T', ' ') }} UTC
+    — score précédent : <b>{{ result.precedente.risk_score }}/100</b>
+    {% if result.evolution is not none %}
+      ({% if result.evolution > 0 %}+{{ result.evolution }}{% else %}{{ result.evolution }}{% endif %} point(s) depuis)
+    {% endif %}
+    — <a href="/historique">voir l'historique</a>
+  </div>
+  {% endif %}
+
+  <section class="card">
+    <h2>Justification du score de risque</h2>
+    <ul class="reasons">
+      {% for raison in result.risque.reasons %}<li>{{ raison }}</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Informations enrichies</h2>
+    <table>
+      {% for label, valeur in result.enrichissement.fields %}
+      <tr><td class="k">{{ label }}</td><td class="mono">{{ valeur if valeur not in (None, '') else '—' }}</td></tr>
+      {% endfor %}
+    </table>
+    {% if result.enrichissement.notes %}
+    <p class="hint">{% for note in result.enrichissement.notes %}{{ note }}<br>{% endfor %}</p>
+    {% endif %}
+    <details>
+      <summary>Voir la réponse JSON brute de l'API — {{ result.enrichissement.endpoint }}</summary>
+      <pre>{{ result.enrichissement.raw | tojson(indent=2) }}</pre>
+    </details>
+  </section>
+  {% endif %}
+
+  <!-- ===================== RÉSULTATS DU LOT ===================== -->
+  {% if lot %}
+  <section class="card">
+    <h2>Résultats du lot ({{ lot | length }} indicateur(s))</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>IOC</th><th>Type</th><th>Réputation</th><th>Risque</th>
+          <th>Score</th><th>Action recommandée</th><th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lot %}
+        <tr>
+          <td class="mono" style="word-break:break-all">{{ ligne.ioc }}</td>
+          <td>{{ ligne.ioc_type_label }}</td>
+          <td class="mono">{{ ligne.reputation or '—' }}</td>
+          <td>{% if ligne.level %}<span class="badge risk-{{ ligne.level|lower }}">{{ ligne.level }}</span>{% else %}—{% endif %}</td>
+          <td class="mono">{{ ligne.score if ligne.score is not none else '—' }}</td>
+          <td>{{ ligne.action or '—' }}</td>
+          <td>
+            {{ ligne.statut }}
+            <div class="hint" style="margin:2px 0 0">{{ ligne.message }}</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if lot_erreurs %}
+    <p class="hint"><b>Indicateurs refusés :</b>
+      {% for entree in lot_erreurs %}<code>{{ entree.ioc }}</code> {% endfor %}
+      — ils ne correspondent à aucun format reconnu.
+    </p>
+    {% endif %}
+    {% if ignorees %}
+    <p class="hint"><b>{{ ignorees }} indicateur(s) non traité(s)</b> : la limite est de {{ max_lot }} par analyse
+      (temps d'exécution de la fonction d'hébergement). Relancez-les dans un second lot.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+{% endblock %}

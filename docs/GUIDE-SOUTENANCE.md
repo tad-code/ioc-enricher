@@ -217,6 +217,12 @@ reponse = requests.request(method, _endpoint(), params=params, json=payload,
     par source, plus la moyenne des scores et un tri pour les sources les plus
     utilisées. Le tableau de bord est donc la preuve que la base de données sert
     à quelque chose.
+14. **Pourquoi plusieurs pages au lieu d'une seule ?** Parce que chaque chose à sa
+    place : on analyse sur une page, on lit les statistiques sur une autre. Et
+    surtout, tout ce qui est commun (en-tête, menu, pied de page, styles) est écrit
+    **une seule fois** dans `base.html`, et les quatre pages en **héritent** avec
+    `{% raw %}{% extends "base.html" %}{% endraw %}`. Si je change le menu, je le
+    change à un seul endroit — c'est l'héritage de gabarits de Jinja.
 
 ---
 
@@ -236,7 +242,11 @@ enrichment.py           → enrich() → enrich_ip() / enrich_domain() / enrich_
   _email_security()     → SPF / DMARC / MX via Google DNS-over-HTTPS
 scoring.py              → compute_risk() : signaux → score → niveau → réputation → action
 db.py                   → save_analysis(), list_analyses(), find_last_analysis()
-templates/index.html    → l'interface (formulaire, rapport, tableau de bord, historique)
+templates/base.html     → gabarit commun (en-tête, menu, pied de page, styles)
+templates/analyse.html  → page « Analyser » (formulaire, rapport, lot)
+templates/tableau_bord.html → page « Tableau de bord »
+templates/historique.html   → page « Historique »
+templates/api.html      → page « API JSON »
 api/index.py            → point d'entrée du déploiement Vercel
 sql/schema.sql          → création de la table Supabase
 tests/test_socle.py     → les 24 tests unitaires

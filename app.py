@@ -26,7 +26,7 @@ import os
 import time
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 
 import db
 import scoring
@@ -235,30 +235,29 @@ def statistiques(historique: list) -> dict:
 # Rendu de la page
 # ---------------------------------------------------------------------------
 
-def render_home(**contexte):
-    """Affiche la page principale en y injectant l'historique et les statistiques.
+def render_page(gabarit: str, page: str, **contexte):
+    """Rend une page complète avec les variables communes à tous les gabarits.
 
-    L'historique est rechargé à chaque affichage : si la base est injoignable,
-    la page reste utilisable et un bandeau explique le problème.
+    Chaque page hérite de base.html (en-tête, menu, pied de page, styles) : le
+    menu sait quelle page est active grâce à la variable `page`.
     """
-    historique, erreur_db = db.list_analyses(limit=25)
-    etendue, _ = db.list_analyses_large(limit=500)
-
-    contexte.setdefault("history", historique)
-    contexte.setdefault("db_error", erreur_db)
-    contexte.setdefault("total", len(historique))
-    contexte["stats"] = statistiques(etendue)
+    contexte["page"] = page
     contexte["db_ready"] = db.is_configured()
+    contexte["types"] = TYPES
+    contexte["max_lot"] = MAX_LOT
+    contexte.setdefault("error", None)
+    contexte.setdefault("notice", None)
+    return render_template(gabarit, **contexte)
+
+
+def analyser_page(**contexte):
+    """Page d'analyse : formulaire, résultat éventuel, résultats d'un lot."""
     contexte.setdefault("result", None)
     contexte.setdefault("lot", None)
     contexte.setdefault("lot_erreurs", None)
     contexte.setdefault("ignorees", 0)
-    contexte.setdefault("error", None)
-    contexte.setdefault("notice", None)
     contexte.setdefault("form_value", "")
-    contexte["types"] = TYPES
-    contexte["max_lot"] = MAX_LOT
-    return render_template("index.html", **contexte)
+    return render_page("analyse.html", "analyser", **contexte)
 
 
 # ---------------------------------------------------------------------------
@@ -267,8 +266,31 @@ def render_home(**contexte):
 
 @app.route("/")
 def home():
-    """Page d'accueil : formulaire, tableau de bord, historique."""
-    return render_home()
+    """Page d'analyse : formulaire de saisie et rapport."""
+    return analyser_page()
+
+
+@app.route("/tableau-de-bord")
+def dashboard():
+    """Page « Tableau de bord » : statistiques calculées depuis la base."""
+    etendue, erreur_db = db.list_analyses_large(limit=500)
+    return render_page("tableau_bord.html", "tableau-de-bord",
+                       stats=statistiques(etendue), db_error=erreur_db)
+
+
+@app.route("/historique")
+def historique():
+    """Page « Historique » : les 25 dernières analyses, avec suppression."""
+    lignes, erreur_db = db.list_analyses(limit=25)
+    return render_page("historique.html", "historique",
+                       history=lignes, total=len(lignes), db_error=erreur_db,
+                       supprime=request.args.get("supprime"))
+
+
+@app.route("/api")
+def api_documentation():
+    """Page « API » : documentation des routes JSON et de l'export CSV."""
+    return render_page("api.html", "api")
 
 
 @app.route("/analyze", methods=["POST"])
@@ -280,13 +302,13 @@ def analyze():
     lot = parse_many(valeur_saisie, maximum=MAX_LOT)
     if lot["total"] > 1:
         if not lot["analyses"]:
-            return render_home(
+            return analyser_page(
                 error="Aucun des indicateurs fournis n'est valide.",
                 lot_erreurs=lot["erreurs"],
                 form_value=valeur_saisie,
             ), 400
         resultats = analyser_lot(lot["analyses"])
-        return render_home(
+        return analyser_page(
             lot=resultats,
             lot_erreurs=lot["erreurs"],
             ignorees=lot["ignorees"],
@@ -296,7 +318,7 @@ def analyze():
     # --- Mode simple : un seul indicateur ---------------------------------
     analyse = parse_ioc(valeur_saisie)
     if not analyse["ok"]:
-        return render_home(error=analyse["error"], form_value=valeur_saisie), 400
+        return analyser_page(error=analyse["error"], form_value=valeur_saisie), 400
 
     # L'IOC a-t-il déjà été analysé ? (avant l'enregistrement, évidemment)
     precedente = db.find_last_analysis(analyse["ioc"])
@@ -305,7 +327,7 @@ def analyze():
         resultat, avis = analyser_ioc(analyse["ioc"], analyse["type"])
     except EnrichmentError as exc:
         log.warning("Enrichissement impossible pour %s : %s", analyse["ioc"], exc)
-        return render_home(
+        return analyser_page(
             error=f"Enrichissement impossible ({exc.kind}) : {exc}",
             form_value=valeur_saisie,
         ), 502
@@ -318,17 +340,21 @@ def analyze():
         except (TypeError, ValueError):
             resultat["evolution"] = None
 
-    return render_home(result=resultat, notice=avis, form_value="")
+    return analyser_page(result=resultat, notice=avis, form_value="")
 
 
 @app.route("/delete/<int:row_id>", methods=["POST"])
 def delete(row_id: int):
-    """Supprime une analyse de l'historique (bouton « Supprimer »)."""
+    """Supprime une analyse puis revient sur la page d'historique."""
     try:
         db.delete_analysis(row_id)
     except db.DatabaseError as exc:
-        return render_home(error=f"Suppression impossible ({exc.kind}) : {exc}")
-    return render_home(notice=f"Analyse n°{row_id} supprimée de l'historique.")
+        lignes, erreur_db = db.list_analyses(limit=25)
+        return render_page("historique.html", "historique",
+                           error=f"Suppression impossible ({exc.kind}) : {exc}",
+                           history=lignes, total=len(lignes), db_error=erreur_db,
+                           supprime=None)
+    return redirect(url_for("historique", supprime=row_id))
 
 
 @app.route("/export.csv")
@@ -336,7 +362,7 @@ def export_csv():
     """Exporte tout l'historique en CSV (ouvrable dans Excel / LibreOffice)."""
     lignes, erreur = db.list_analyses_large(limit=500)
     if erreur:
-        return render_home(error=f"Export impossible : {erreur}"), 502
+        return analyser_page(error=f"Export impossible : {erreur}"), 502
 
     tampon = io.StringIO()
     # Point-virgule comme séparateur : c'est ce qu'attend Excel en français.
@@ -440,23 +466,23 @@ def health():
 
 @app.errorhandler(404)
 def page_introuvable(_erreur):
-    return render_home(error="Page introuvable. Revenez à l'accueil pour lancer une analyse."), 404
+    return analyser_page(error="Page introuvable. Revenez à l'accueil pour lancer une analyse."), 404
 
 
 @app.errorhandler(405)
 def methode_non_autorisee(_erreur):
-    return render_home(error="Méthode HTTP non autorisée sur cette adresse."), 405
+    return analyser_page(error="Méthode HTTP non autorisée sur cette adresse."), 405
 
 
 @app.errorhandler(413)
 def requete_trop_volumineuse(_erreur):
-    return render_home(error="Requête refusée : la saisie est trop volumineuse (16 Ko maximum)."), 413
+    return analyser_page(error="Requête refusée : la saisie est trop volumineuse (16 Ko maximum)."), 413
 
 
 @app.errorhandler(500)
 def erreur_interne(_erreur):
     log.exception("Erreur interne non gérée")
-    return render_home(error="Une erreur interne est survenue. L'incident a été journalisé."), 500
+    return analyser_page(error="Une erreur interne est survenue. L'incident a été journalisé."), 500
 
 
 if __name__ == "__main__":

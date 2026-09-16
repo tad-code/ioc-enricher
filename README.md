@@ -213,7 +213,11 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 | `enrichment.py` | Appels HTTP aux API externes + normalisation des réponses JSON. |
 | `scoring.py` | Règles de risque : signaux → score 0-100 → niveau LOW/…/CRITICAL. |
 | `db.py` | Accès Supabase (API REST PostgREST) : insert, select, delete, count. |
-| `templates/index.html` | Interface web (formulaire, rapport, historique). |
+| `templates/base.html` | Gabarit commun : en-tête, menu, pied de page et styles (héritage Jinja). |
+| `templates/analyse.html` | Page « Analyser » : formulaire, rapport, résultats de lot. |
+| `templates/tableau_bord.html` | Page « Tableau de bord » : statistiques et barres. |
+| `templates/historique.html` | Page « Historique » : tableau, suppression, export CSV. |
+| `templates/api.html` | Page « API JSON » : documentation des routes. |
 | `api/index.py` | Point d'entrée pour le déploiement serverless sur Vercel. |
 | `sql/schema.sql` | Création de la table `ioc_analyses` et des règles d'accès (RLS). |
 | `tests/test_socle.py` | Tests unitaires (pytest). |
@@ -237,11 +241,14 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 
 | Écran | Fichier |
 |---|---|
-| Formulaire de saisie et historique | [`docs/capture-accueil.png`](docs/capture-accueil.png) |
+| Page « Analyser » (formulaire) | [`docs/capture-analyse.png`](docs/capture-analyse.png) |
 | Rapport d'analyse d'une IP (score HIGH) | [`docs/capture-rapport.png`](docs/capture-rapport.png) |
 | Réponse JSON brute de l'API (dépliée) | [`docs/capture-json.png`](docs/capture-json.png) |
 | Analyse d'un nom de domaine (SPF / DMARC) | [`docs/capture-domaine.png`](docs/capture-domaine.png) |
 | Mode « analyse par lots » | [`docs/capture-lot.png`](docs/capture-lot.png) |
+| Page « Tableau de bord » | [`docs/capture-tableau-de-bord.png`](docs/capture-tableau-de-bord.png) |
+| Page « Historique » | [`docs/capture-historique.png`](docs/capture-historique.png) |
+| Page « API JSON » | [`docs/capture-api.png`](docs/capture-api.png) |
 
 ![Rapport d'analyse](docs/capture-rapport.png)
 
@@ -275,7 +282,10 @@ vercel --prod
 
 | Route | Rôle |
 |---|---|
-| `GET /` | Interface web : formulaire, tableau de bord, historique, API documentée |
+| `GET /` | Page « Analyser » : formulaire et rapport |
+| `GET /tableau-de-bord` | Page « Tableau de bord » : statistiques |
+| `GET /historique` | Page « Historique » : analyses enregistrées et suppression |
+| `GET /api` | Page « API JSON » : documentation des routes |
 | `POST /analyze` | Analyse d'un indicateur — ou d'un lot de 5 maximum |
 | `POST /delete/<id>` | Suppression d'une analyse de l'historique |
 | `GET /export.csv` | Export CSV de tout l'historique |
@@ -320,7 +330,7 @@ Résultat obtenu le 16/09/2026 :
 ### Test de l'application déployée (bout en bout)
 
 Après déploiement, l'application publique a été testée automatiquement par script
-(appels HTTP réels sur l'URL de production) : **43 vérifications, 43 réussies**.
+(appels HTTP réels sur l'URL de production) : **46 vérifications, 46 réussies**.
 
 | Vérification | Résultat |
 |---|---|

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block titre %}Tableau de bord{% endblock %}
+
+{% block contenu %}
+
+  <section class="card">
+    <h2>Tableau de bord</h2>
+
+    {% if error %}<div class="alert error"><b>⚠ {{ error }}</b></div>{% endif %}
+
+    {% if db_error %}
+      <div class="alert error"><b>Statistiques indisponibles :</b> {{ db_error }}</div>
+    {% endif %}
+
+    {% if stats.total %}
+      <div class="stat-grid">
+        <div class="stat"><div class="lbl">Analyses enregistrées</div><div class="val">{{ stats.total }}</div></div>
+        <div class="stat"><div class="lbl">Score de risque moyen</div><div class="val">{{ stats.score_moyen }}<span style="font-size:13px; color:var(--muted)">/100</span></div></div>
+        <div class="stat"><div class="lbl">Sources interrogées</div><div class="val">{{ stats.sources_distinctes }}</div></div>
+        <div class="stat"><div class="lbl">Dernière analyse</div><div class="val" style="font-size:13px">{{ (stats.derniere or '')[:19].replace('T', ' ') }}</div></div>
+      </div>
+
+      {% set base = stats.total if stats.total else 1 %}
+
+      <h3>Répartition par niveau de risque</h3>
+      {% for niveau in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] %}
+      <div class="bar-row">
+        <span class="bar-label">{{ niveau }}</span>
+        <div class="bar bar-{{ niveau|lower }}"><span style="width: {{ (stats.par_risque[niveau] / base * 100) | round(1) }}%"></span></div>
+        <span class="bar-value">{{ stats.par_risque[niveau] }}</span>
+      </div>
+      {% endfor %}
+
+      <h3>Répartition par type d'indicateur</h3>
+      {% for type_ioc in ['ip', 'domain', 'hash'] %}
+      <div class="bar-row">
+        <span class="bar-label">{{ types.get(type_ioc, type_ioc) }}</span>
+        <div class="bar"><span style="width: {{ (stats.par_type[type_ioc] / base * 100) | round(1) }}%"></span></div>
+        <span class="bar-value">{{ stats.par_type[type_ioc] }}</span>
+      </div>
+      {% endfor %}
+
+      {% if stats.sources %}
+      <h3>Sources les plus utilisées</h3>
+      {% for source, nombre in stats.sources %}
+      <div class="bar-row">
+        <span class="bar-label" style="width:210px; font-size:12px">{{ source }}</span>
+        <div class="bar"><span style="width: {{ (nombre / base * 100) | round(1) }}%"></span></div>
+        <span class="bar-value">{{ nombre }}</span>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      <p class="hint">
+        Ces statistiques sont calculées en Python à partir des lignes lues dans la base
+        (dictionnaires, boucles et tri). Période couverte : du
+        {{ (stats.premiere or '')[:19].replace('T', ' ') }} au {{ (stats.derniere or '')[:19].replace('T', ' ') }} UTC.
+      </p>
+    {% else %}
+      <p class="empty">Aucune donnée pour le moment : lancez une première analyse depuis la page « Analyser ».</p>
+    {% endif %}
+  </section>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titre %}Historique{% endblock %}
+
+{% block contenu %}
+
+  <section class="card">
+    <h2>Historique des analyses</h2>
+
+    {% if error %}<div class="alert error"><b>⚠ {{ error }}</b></div>{% endif %}
+    {% if supprime %}<div class="alert ok">Analyse n°{{ supprime }} supprimée de l'historique.</div>{% endif %}
+
+    {% if db_error %}
+      <div class="alert error">
+        <b>Historique indisponible :</b> {{ db_error }}
+      </div>
+    {% endif %}
+
+    {% if history %}
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>IOC</th><th>Type</th><th>Réputation</th><th>Risque</th>
+            <th>Score</th><th>Source API</th><th>Date (UTC)</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ligne in history %}
+          <tr>
+            <td class="mono">{{ ligne.id }}</td>
+            <td class="mono" style="word-break:break-all">{{ ligne.ioc }}</td>
+            <td>{{ types.get(ligne.ioc_type, ligne.ioc_type) }}</td>
+            <td class="mono">{{ (ligne.summary or {}).get('reputation', '—') }}</td>
+            <td><span class="badge risk-{{ (ligne.risk_level or 'low')|lower }}">{{ ligne.risk_level }}</span></td>
+            <td class="mono">{{ ligne.risk_score }}</td>
+            <td class="mono">{{ ligne.source_api or '—' }}</td>
+            <td class="mono">{{ (ligne.created_at or '')[:19].replace('T', ' ') }}</td>
+            <td>
+              <form action="/delete/{{ ligne.id }}" method="post"
+                    data-confirm="Supprimer définitivement l'analyse n°{{ ligne.id }} ?">
+                <button class="ghost" type="submit">Supprimer</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="hint">
+        {{ total }} analyse(s) affichée(s) — les 25 plus récentes.
+        &nbsp;·&nbsp; <a href="/export.csv">Télécharger tout l'historique (CSV)</a>
+        &nbsp;·&nbsp; <a href="/tableau-de-bord">Voir les statistiques</a>
+      </p>
+    {% else %}
+      <p class="empty">Aucune analyse enregistrée pour le moment.
+        <a href="/">Lancer une première analyse</a>.</p>
+    {% endif %}
+  </section>
+
+{% endblock %}
