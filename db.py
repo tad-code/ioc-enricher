@@ -36,13 +36,31 @@ class DatabaseError(Exception):
         self.kind = kind
 
 
+def _cle() -> str:
+    """Clé à utiliser pour parler à la base.
+
+    Priorité à SUPABASE_SECRET_KEY : cette clé secrète reste **côté serveur**,
+    elle n'est jamais envoyée au navigateur et contourne les règles RLS.
+    SUPABASE_ANON_KEY n'est utilisée qu'en secours (mode dégradé).
+    """
+    return (
+        os.getenv("SUPABASE_SECRET_KEY", "").strip()
+        or os.getenv("SUPABASE_ANON_KEY", "").strip()
+    )
+
+
 def is_configured() -> bool:
-    """Les variables d'environnement Supabase sont-elles présentes ?"""
-    return bool(os.getenv("SUPABASE_URL")) and bool(os.getenv("SUPABASE_ANON_KEY"))
+    """L'application a-t-elle de quoi parler à la base ?"""
+    return bool(os.getenv("SUPABASE_URL", "").strip()) and bool(_cle())
+
+
+def uses_secret_key() -> bool:
+    """La configuration utilise-t-elle la clé secrète (mode recommandé) ?"""
+    return bool(os.getenv("SUPABASE_SECRET_KEY", "").strip())
 
 
 def _headers(extra: dict | None = None) -> dict:
-    cle = os.getenv("SUPABASE_ANON_KEY", "")
+    cle = _cle()
     entetes = {
         "apikey": cle,
         "Authorization": f"Bearer {cle}",
@@ -61,7 +79,8 @@ def _call(method: str, *, params=None, payload=None, extra_headers=None) -> requ
     """Exécute une requête HTTP vers Supabase en traduisant les erreurs."""
     if not is_configured():
         raise DatabaseError(
-            "Supabase n'est pas configuré : renseignez SUPABASE_URL et SUPABASE_ANON_KEY dans le fichier .env.",
+            "Base de données non configurée : renseignez SUPABASE_URL et "
+            "SUPABASE_SECRET_KEY (ou SUPABASE_ANON_KEY) dans le fichier .env.",
             kind="not_configured",
         )
     try:

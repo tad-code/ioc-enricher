@@ -105,6 +105,18 @@ def parse_ioc(value: str) -> dict:
             "detail": None,
         }
 
+    # --- Protection contre les saisies démesurées ------------------------
+    # On borne la taille avant toute expression régulière : cela évite qu'une
+    # chaîne très longue ne consomme inutilement du CPU.
+    if len(value) > 512:
+        return {
+            "ok": False,
+            "error": "Saisie trop longue : 512 caractères maximum.",
+            "ioc": "",
+            "type": None,
+            "detail": None,
+        }
+
     candidate = strip_scheme(refang(value))
     ioc_type = detect_type(candidate)
 

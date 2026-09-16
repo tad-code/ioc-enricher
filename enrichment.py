@@ -35,7 +35,7 @@ import requests
 log = logging.getLogger("ioc-enricher.api")
 
 TIMEOUT = 8  # secondes : on ne bloque pas l'utilisateur indéfiniment
-HEADERS = {"User-Agent": "IOC-Enricher/1.0 (Hacktualiz Academy - Sprint Python 2)",
+HEADERS = {"User-Agent": "IOC-Enricher/1.0 (+https://github.com/tad-code/ioc-enricher)",
            "Accept": "application/json"}
 
 

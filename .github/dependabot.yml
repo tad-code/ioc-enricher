@@ -1,0 +1,12 @@
+# Mises à jour de sécurité automatiques des dépendances Python.
+# GitHub ouvre une pull request dès qu'une version corrigeant une faille sort.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependances"
+      - "securite"

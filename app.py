@@ -1,13 +1,12 @@
 """
-IOC ENRICHER — Projet 5 « Cyber IOC Enricher »
-Hacktualiz Academy / Sprint Python 2
+IOC ENRICHER — enrichissement d'indicateurs de compromission.
 
 Application web Flask qui permet à un analyste SOC de :
   1. saisir un indicateur de compromission (IP, domaine ou hash) ;
   2. faire identifier et valider automatiquement son type ;
   3. interroger une API externe d'enrichissement et récupérer du JSON ;
   4. obtenir un rapport structuré avec un niveau de risque justifié ;
-  5. enregistrer l'analyse dans Supabase ;
+  5. enregistrer l'analyse dans une base de données PostgreSQL (Supabase) ;
   6. consulter et supprimer l'historique des analyses.
 
 Lancement en local :
@@ -27,7 +26,7 @@ import scoring
 from enrichment import EnrichmentError, enrich
 from ioc_parser import TYPES, parse_ioc
 
-# Charge le fichier .env (clés Supabase, clé API éventuelle).
+# Charge le fichier .env (identifiants de la base, clé API éventuelle).
 # En production (Vercel), les variables viennent des Environment Variables.
 load_dotenv()
 
@@ -36,15 +35,44 @@ log = logging.getLogger("ioc-enricher")
 
 app = Flask(__name__)
 
+# Sécurité : on refuse les requêtes dont le corps dépasse 16 Ko. Un IOC tient en
+# quelques dizaines de caractères ; au-delà, c'est une tentative d'abus.
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
+
+# En-têtes de sécurité appliqués à toutes les réponses.
+# Ils sont définis ici (et non dans vercel.json) car le déploiement utilise la
+# section « routes », qui prend le pas sur la section « headers ».
+ENTETES_SECURITE = {
+    "Content-Security-Policy": (
+        "default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+        "script-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+    "X-Robots-Tag": "noindex, nofollow",
+}
+
+
+@app.after_request
+def ajouter_entetes_securite(reponse):
+    """Ajoute les en-têtes de sécurité à chaque réponse HTTP."""
+    for nom, valeur in ENTETES_SECURITE.items():
+        reponse.headers.setdefault(nom, valeur)
+    return reponse
+
 
 # ---------------------------------------------------------------------------
 # Fonctions utilitaires
 # ---------------------------------------------------------------------------
 
 def render_home(**contexte):
-    """Affiche la page principale en y injectant l'historique Supabase.
+    """Affiche la page principale en y injectant l'historique des analyses.
 
-    L'historique est chargé à chaque affichage : si Supabase est injoignable,
+    L'historique est rechargé à chaque affichage : si la base est injoignable,
     la page reste utilisable et un bandeau explique le problème.
     """
     historique, erreur_db = db.list_analyses(limit=25)
@@ -102,7 +130,7 @@ def analyze():
         "risque": risque,
     }
 
-    # --- Étape 4 : enregistrement dans Supabase --------------------------
+    # --- Étape 4 : enregistrement en base de données ---------------------
     try:
         ligne = db.save_analysis(
             ioc=analyse["ioc"],
@@ -123,10 +151,11 @@ def analyze():
         resultat["created_at"] = ligne.get("created_at")
         avis = None
     except db.DatabaseError as exc:
-        # L'analyse reste affichée même si la sauvegarde échoue.
-        log.warning("Sauvegarde Supabase impossible : %s", exc)
+        # L'analyse reste affichée même si la sauvegarde échoue : on ne perd pas
+        # le travail de l'analyste à cause d'un incident de base de données.
+        log.warning("Sauvegarde impossible : %s", exc)
         resultat["saved"] = False
-        avis = f"Analyse effectuée, mais NON enregistrée dans Supabase ({exc.kind}) : {exc}"
+        avis = f"Analyse effectuée, mais NON enregistrée dans l'historique ({exc.kind}) : {exc}"
 
     return render_home(result=resultat, notice=avis, form_value="")
 
@@ -143,13 +172,12 @@ def delete(row_id: int):
 
 @app.route("/health")
 def health():
-    """Sonde de supervision : état de l'application et de la base."""
-    return {
-        "status": "ok",
-        "supabase_configured": db.is_configured(),
-        "abuseipdb_configured": bool(os.getenv("ABUSEIPDB_API_KEY", "").strip()),
-        "analyses_stored": db.count_analyses(),
-    }
+    """Sonde de supervision volontairement minimale.
+
+    Elle ne renvoie ni configuration, ni statistiques de base de données :
+    ce genre d'information ne doit pas être exposé publiquement.
+    """
+    return {"status": "ok", "service": "ioc-enricher"}
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +192,11 @@ def page_introuvable(_erreur):
 @app.errorhandler(405)
 def methode_non_autorisee(_erreur):
     return render_home(error="Méthode HTTP non autorisée sur cette adresse."), 405
+
+
+@app.errorhandler(413)
+def requete_trop_volumineuse(_erreur):
+    return render_home(error="Requête refusée : la saisie est trop volumineuse (16 Ko maximum)."), 413
 
 
 @app.errorhandler(500)

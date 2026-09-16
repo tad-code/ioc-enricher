@@ -1,10 +1,11 @@
-# 🛡️ IOC ENRICHER — Projet 5 « Cyber IOC Enricher »
+# 🛡️ IOC ENRICHER
 
-**Hacktualiz Academy — Sprint Python 2**
+**Cyber IOC Enricher** — application web Python.
 
-Application web Python qui permet à un analyste SOC d'enrichir un indicateur de
-compromission (IOC), d'obtenir un niveau de risque justifié et de conserver
-l'historique des analyses dans une base de données **Supabase**.
+Un analyste SOC y saisit un indicateur de compromission (IOC), obtient un
+niveau de risque justifié calculé à partir d'API externes, et l'historique des
+analyses est conservé dans une base de données PostgreSQL hébergée sur
+**Supabase**.
 
 > 🔗 **Application en ligne :** https://ioc-enricher-delta.vercel.app
 > 📦 **Dépôt GitHub :** https://github.com/tad-code/ioc-enricher
@@ -14,7 +15,7 @@ l'historique des analyses dans une base de données **Supabase**.
 
 ## 1. Nom du projet
 
-**IOC Enricher** — *Cyber IOC Enricher* (Projet 5).
+**IOC Enricher** — *Cyber IOC Enricher*.
 
 Un **IOC** (*Indicator Of Compromise*) est un indice technique qui peut révéler
 une compromission : une adresse IP malveillante, un nom de domaine suspect, ou
@@ -48,7 +49,7 @@ risque justifié et un historique centralisé.
 | Persistance Supabase | Chaque analyse est enregistrée (IOC, type, score, source, JSON, date). |
 | Historique | Les 25 dernières analyses sont affichées dans un tableau. |
 | Suppression | Chaque ligne de l'historique peut être supprimée (bouton « Supprimer »). |
-| Sonde de supervision | Route `/health` : état de l'application et de la base. |
+| Sonde de supervision | Route `/health` réduite au strict minimum (`{"status": "ok"}`), sans aucune information de configuration. |
 
 ## 4. Technologies utilisées
 
@@ -158,7 +159,8 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 | Variable | Obligatoire | Rôle |
 |---|---|---|
 | `SUPABASE_URL` | ✅ | Adresse de l'API REST du projet Supabase (`https://xxxx.supabase.co`). |
-| `SUPABASE_ANON_KEY` | ✅ | Clé publique `anon`, envoyée dans les en-têtes `apikey` et `Authorization`. |
+| `SUPABASE_SECRET_KEY` | ✅ recommandé | Clé **secrète**, utilisée uniquement côté serveur (jamais envoyée au navigateur). Elle contourne les règles RLS : la table peut donc rester totalement fermée au public. |
+| `SUPABASE_ANON_KEY` | ⚠️ secours | Clé publique, à utiliser seulement si vous n'avez pas de clé secrète. La table doit alors avoir des politiques RLS ouvertes (« mode dégradé » commenté dans `sql/schema.sql`). |
 | `ABUSEIPDB_API_KEY` | ❌ | Si renseignée, remplace `ip-api.com` pour la réputation des IP. |
 | `FLASK_SECRET_KEY` | ❌ | Clé secrète Flask. |
 
@@ -255,8 +257,8 @@ vercel --prod
 | Hébergeur | Vercel (offre gratuite) |
 | Projet | `ioc-enricher` |
 | Type d'exécution | Fonction Python *serverless* (`api/index.py`, `maxDuration: 30s`) |
-| Variables d'environnement | `SUPABASE_URL`, `SUPABASE_ANON_KEY` (Production) |
-| Protection d'accès | désactivée (l'application doit être publique) |
+| Variables d'environnement | `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (Production) |
+| Protection d'accès | préversions protégées, production publique (accès libre voulu pour l'évaluation) |
 | Sonde | https://ioc-enricher-delta.vercel.app/health |
 
 ---
@@ -300,7 +302,7 @@ Après déploiement, l'application publique a été testée automatiquement par 
 | Vérification | Résultat |
 |---|---|
 | Page d'accueil servie par Flask | ✅ HTTP 200, interface complète |
-| Sonde `/health` | ✅ `supabase_configured: true` |
+| Sonde `/health` | ✅ HTTP 200 — `{"status": "ok", "service": "ioc-enricher"}` |
 | Analyse d'une IP → rapport affiché | ✅ score HIGH (70/100) |
 | Réponse JSON brute affichée | ✅ |
 | Ligne réellement écrite dans Supabase | ✅ (vérifiée par une requête REST indépendante) |
@@ -319,7 +321,33 @@ Après déploiement, l'application publique a été testée automatiquement par 
 | **Cas vide** | Cliquer sur *Enrichir* sans rien saisir | Message « Aucune valeur saisie » (HTTP 400). |
 | **Erreur API** | Tester `192.168.1.10` (IP privée) | « ip-api.com a refusé l'adresse : private range » — pas de trace Python. |
 | **Erreur réseau** | Couper Internet puis analyser | « Connexion impossible à l'API externe » — l'application reste utilisable. |
-| **Erreur Supabase** | Vider `SUPABASE_URL` dans `.env` puis analyser | Le rapport s'affiche, avec le bandeau « Analyse effectuée, mais NON enregistrée ». |
+| **Erreur Supabase** | Vider `SUPABASE_URL` dans `.env` puis analyser | Le rapport s'affiche, avec le bandeau « Analyse effectuée, mais NON enregistrée dans l'historique ». |
+
+## 🔒 Sécurité
+
+Le projet a été passé en revue sur ses trois briques : dépendances, base de
+données et hébergement.
+
+| Faille / risque identifié | Correction apportée |
+|---|---|
+| La table Supabase était ouverte en lecture, en insertion **et en suppression** au rôle public : quiconque possédait la clé publique pouvait vider la base | L'application utilise désormais une **clé secrète côté serveur**, et `sql/schema.sql` **supprime** les politiques RLS ouvertes : l'API REST publique ne renvoie alors plus rien. *(Étape finale : ajouter `SUPABASE_SECRET_KEY` puis ré-exécuter `sql/schema.sql`.)* |
+| `requests` **2.32.3** vulnérable (CVE-2024-47081 : fuite des identifiants `netrc`) | Mise à jour vers `requests==2.34.2` |
+| Flask **3.0.3** et python-dotenv **1.0.1** anciens | Mise à jour vers Flask 3.1.3 (Werkzeug 3.1.8) et python-dotenv 1.2.3 |
+| Aucun en-tête de sécurité HTTP | HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `X-Robots-Tag` et **CSP restrictive** (`vercel.json`) |
+| La préversion Vercel était publiquement accessible | Protection d'accès réactivée **pour les préversions uniquement** : seule la production est publique |
+| `/health` exposait la configuration et le nombre de lignes en base | Réduite à `{"status": "ok", "service": "ioc-enricher"}` |
+| Saisie non bornée (consommation CPU sur une chaîne très longue) | Saisie limitée à 512 caractères ; corps de requête limité à 16 Ko (erreur `413` gérée proprement) |
+| JavaScript en ligne (`onsubmit=`), incompatible avec une CSP stricte | Déplacé dans `static/app.js` |
+| Alertes de sécurité GitHub désactivées | Dependabot (alertes **et** mises à jour), analyse des secrets et `push protection` activés ; fichier `SECURITY.md` ajouté |
+
+Aucune clé n'est présente dans le dépôt : vérifié dans les fichiers suivis **et**
+dans tout l'historique Git (`git log -S`). Les identifiants vivent uniquement
+dans `.env` en local et dans les *Environment Variables* de Vercel.
+
+```bash
+# État de la sécurité du dépôt
+gh api repos/tad-code/ioc-enricher --jq .security_and_analysis
+```
 
 ## 🎤 Préparation de la soutenance
 
@@ -368,4 +396,4 @@ jamais dans le dépôt.
 
 ## 📄 Licence
 
-Projet pédagogique — Hacktualiz Academy, Côte d'Ivoire.
+Projet pédagogique — enrichissement d'indicateurs de compromission.

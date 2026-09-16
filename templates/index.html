@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
   <title>IOC Enricher — Analyst Desk</title>
   <style>
     :root {
@@ -90,13 +91,6 @@
       background: #0a0f15; border: 1px solid var(--line); border-radius: 9px;
       padding: 12px; overflow-x: auto; font-size: 12.5px; color: #b9f2e6; max-height: 380px;
     }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
-    .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
-    .stat .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .8px; }
-    .stat .val { font-size: 17px; font-weight: 600; margin-top: 3px; word-break: break-word; }
-    .pill { display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-    .pill.on { color: var(--low); border-color: rgba(53,208,127,.4); }
-    .pill.off { color: var(--high); border-color: rgba(240,140,58,.4); }
     footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; padding: 18px 20px 40px; text-align: center; }
     .empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
   </style>
@@ -107,9 +101,9 @@
   <div class="wrap">
     <h1>IOC <span>ENRICHER</span> — Analyst Desk</h1>
     <div class="sub">
-      Hacktualiz Academy · Sprint Python 2 · Projet 5 — enrichissement d'indicateurs de compromission
+      Enrichissement d'indicateurs de compromission — adresse IP, nom de domaine, empreinte de fichier
       &nbsp;·&nbsp;
-      {% if db_ready %}<span class="pill on">Supabase connecté</span>{% else %}<span class="pill off">Supabase non configuré</span>{% endif %}
+      {% if db_ready %}<span class="pill on">Base de données connectée</span>{% else %}<span class="pill off">Base de données non configurée</span>{% endif %}
     </div>
   </div>
 </header>
@@ -121,7 +115,7 @@
     <h2>Analyser un indicateur</h2>
     <form class="search" action="/analyze" method="post">
       <input type="text" name="ioc" value="{{ form_value }}" autocomplete="off" autofocus
-             placeholder="185.10.10.5  ·  evil-domain.com  ·  44d88612fea8a8f36de82e1278abb02f">
+             maxlength="512" placeholder="185.10.10.5  ·  evil-domain.com  ·  44d88612fea8a8f36de82e1278abb02f">
       <button type="submit">Enrichir</button>
     </form>
     <p class="hint">
@@ -143,8 +137,8 @@
           <span class="type-chip">{{ result.ioc_type_label }}</span>
           <span class="pill">{{ result.enrichissement.source }}</span>
           <span class="pill">HTTP {{ result.enrichissement.http_status }}</span>
-          {% if result.saved %}<span class="pill on">Enregistré dans Supabase</span>
-          {% else %}<span class="pill off">Non enregistré</span>{% endif %}
+          {% if result.saved %}<span class="pill on">Analyse enregistrée</span>
+          {% else %}<span class="pill off">Non enregistrée</span>{% endif %}
         </div>
         {% if result.detail %}<div class="hint">{{ result.detail }}</div>{% endif %}
       </div>
@@ -182,11 +176,11 @@
 
   <!-- ===================== HISTORIQUE ===================== -->
   <section class="card">
-    <h2>Historique des analyses (Supabase)</h2>
+    <h2>Historique des analyses</h2>
 
     {% if db_error %}
       <div class="alert error">
-        <b>Base de données indisponible :</b> {{ db_error }}
+        <b>Historique indisponible :</b> {{ db_error }}
       </div>
     {% endif %}
 
@@ -210,7 +204,7 @@
             <td class="mono">{{ (ligne.created_at or '')[:19].replace('T', ' ') }}</td>
             <td>
               <form action="/delete/{{ ligne.id }}" method="post"
-                    onsubmit="return confirm('Supprimer définitivement l\'analyse n°{{ ligne.id }} ?');">
+                    data-confirm="Supprimer définitivement l'analyse n°{{ ligne.id }} ?">
                 <button class="ghost" type="submit">Supprimer</button>
               </form>
             </td>
@@ -227,9 +221,9 @@
 </main>
 
 <footer>
-  Projet 5 — Cyber IOC Enricher · Flask + API externes (ip-api.com, RDAP, CIRCL) + Supabase
-  &nbsp;·&nbsp; <a href="/health" style="color:var(--muted)">/health</a>
+  IOC Enricher — Flask · API externes : ip-api.com, RDAP (rdap.org), CIRCL hashlookup
 </footer>
 
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>
