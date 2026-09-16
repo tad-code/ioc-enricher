@@ -1,0 +1,89 @@
+"""
+Moteur de scoring : transforme les signaux d'enrichissement en niveau de risque.
+
+Principe : chaque source externe remonte dans `enrichment["signals"]` une liste
+de dictionnaires {"points": int, "label": str}. Ce module additionne ces points,
+ajoute quelques règles contextuelles (pays à risque, TLD suspect...) et
+convertit le total en niveau lisible : LOW / MEDIUM / HIGH / CRITICAL.
+
+Tout est transparent : le rapport affiche POURQUOI tel score a été attribué.
+"""
+
+from __future__ import annotations
+
+# Score de départ : un IOC est par définition un élément à vérifier.
+BASE_SCORE = 10
+
+# Fourchettes -> niveau. On parcourt du plus élevé au plus faible.
+LEVELS = ((75, "CRITICAL"), (50, "HIGH"), (25, "MEDIUM"), (0, "LOW"))
+
+# Extension de domaine fréquemment détournée pour des campagnes malveillantes.
+SUSPICIOUS_TLDS = {
+    "zip", "mov", "xyz", "top", "tk", "gq", "cf", "ml", "work", "click",
+    "country", "stream", "download", "rest", "fit", "buzz", "monster",
+    "quest", "cfd", "sbs", "lol",
+}
+
+# Pays où l'hébergement d'infrastructures malveillantes est statistiquement
+# sur-représenté dans les rapports publics de menace. Signal volontairement
+# faible : un pays n'est jamais une preuve.
+HIGH_ABUSE_COUNTRIES = {"RU", "CN", "IR", "KP", "NG", "VN", "BR", "IN", "UA"}
+
+
+def level_for(score: int) -> str:
+    """Convertit un score 0-100 en niveau de risque."""
+    for seuil, niveau in LEVELS:
+        if score >= seuil:
+            return niveau
+    return "LOW"
+
+
+def _country_rule(enrichment: dict):
+    """Règle contextuelle : localisation de l'infrastructure."""
+    data = enrichment.get("data") or {}
+    code = (data.get("country_code") or "").upper()
+    pays = data.get("country") or "inconnu"
+    if code in HIGH_ABUSE_COUNTRIES:
+        return [{"points": 10, "label": f"Infrastructure localisée en {pays} ({code}), zone à forte activité malveillante rapportée"}]
+    return []
+
+
+def _tld_rule(ioc: str):
+    """Règle contextuelle : extension de domaine à faible réputation."""
+    if "." not in ioc:
+        return []
+    tld = ioc.rsplit(".", 1)[-1]
+    if tld in SUSPICIOUS_TLDS:
+        return [{"points": 15, "label": f"Extension de domaine « .{tld} » très utilisée par les campagnes de phishing"}]
+    return []
+
+
+def compute_risk(ioc_type: str, enrichment: dict) -> dict:
+    """Calcule le score (0-100), le niveau et la liste des raisons.
+
+    Retourne {"score": int, "level": str, "reasons": [str, ...], "details": [...]}.
+    """
+    signaux = list(enrichment.get("signals") or [])
+
+    # Règles contextuelles ajoutées par le moteur lui-même.
+    # (La connaissance « fichier connu / inconnu » vient de l'API : elle est
+    #  déjà comptée dans les signaux fournis par le module enrichment.)
+    if ioc_type == "ip":
+        signaux += _country_rule(enrichment)
+    elif ioc_type == "domain":
+        signaux += _tld_rule(enrichment.get("ioc", ""))
+
+    total = BASE_SCORE + sum(int(s.get("points", 0)) for s in signaux)
+    total = max(0, min(100, total))  # on borne le score entre 0 et 100
+
+    raisons = [s["label"] for s in signaux] or [
+        "Aucun signal négatif détecté par les sources interrogées"
+    ]
+
+    return {
+        "score": total,
+        "level": level_for(total),
+        "reasons": raisons,
+        "base_score": BASE_SCORE,
+        "details": signaux,
+    }

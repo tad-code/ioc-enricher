@@ -1,0 +1,23 @@
+# Secrets : ne jamais publier les clés
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Tests & outils
+.pytest_cache/
+.coverage
+
+# Vercel / éditeurs / OS
+.vercel
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

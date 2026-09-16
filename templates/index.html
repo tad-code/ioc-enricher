@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IOC Enricher — Analyst Desk</title>
+  <style>
+    :root {
+      --bg: #0b1017;
+      --panel: #121a24;
+      --panel-2: #172230;
+      --line: #23303f;
+      --txt: #e7eef7;
+      --muted: #8ba0b6;
+      --accent: #35d0ba;
+      --low: #35d07f;
+      --medium: #e8c547;
+      --high: #f08c3a;
+      --critical: #ef4d5a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--txt);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 15px; line-height: 1.55;
+    }
+    code, pre, .mono { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; }
+    header {
+      border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #101923, var(--bg));
+      padding: 22px 20px 18px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+    h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
+    h1 span { color: var(--accent); }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    main { max-width: 1080px; margin: 0 auto; padding: 22px 20px 60px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 18px; margin-bottom: 18px;
+    }
+    .card h2 { margin: 0 0 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
+    form.search { display: flex; gap: 10px; flex-wrap: wrap; }
+    input[type=text] {
+      flex: 1 1 420px; min-width: 240px; padding: 13px 14px; border-radius: 9px;
+      border: 1px solid var(--line); background: #0d141c; color: var(--txt); font-size: 15px;
+      font-family: "Cascadia Mono", Consolas, monospace;
+    }
+    input[type=text]:focus { outline: none; border-color: var(--accent); }
+    button {
+      padding: 13px 20px; border-radius: 9px; border: 0; cursor: pointer;
+      background: var(--accent); color: #05201c; font-weight: 700; font-size: 14px;
+    }
+    button:hover { filter: brightness(1.1); }
+    button.ghost {
+      background: transparent; color: var(--critical); border: 1px solid #4a2530;
+      padding: 6px 11px; font-weight: 600; font-size: 12px;
+    }
+    button.ghost:hover { background: #2a141b; }
+    .hint { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
+    .hint b { color: var(--txt); }
+    .alert { border-radius: 10px; padding: 13px 15px; margin-bottom: 18px; font-size: 14px; }
+    .alert.error { background: #2a141b; border: 1px solid #5b2634; color: #ffb3bd; }
+    .alert.ok { background: #10241f; border: 1px solid #1f5346; color: #8ff0d8; }
+    .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .badge {
+      display: inline-block; padding: 5px 12px; border-radius: 999px;
+      font-weight: 700; font-size: 13px; letter-spacing: .6px;
+    }
+    .risk-low { background: rgba(53,208,127,.16); color: var(--low); border: 1px solid rgba(53,208,127,.4); }
+    .risk-medium { background: rgba(232,197,71,.16); color: var(--medium); border: 1px solid rgba(232,197,71,.4); }
+    .risk-high { background: rgba(240,140,58,.16); color: var(--high); border: 1px solid rgba(240,140,58,.4); }
+    .risk-critical { background: rgba(239,77,90,.18); color: var(--critical); border: 1px solid rgba(239,77,90,.45); }
+    .type-chip {
+      background: var(--panel-2); border: 1px solid var(--line); color: var(--txt);
+      padding: 4px 10px; border-radius: 7px; font-size: 12px; text-transform: uppercase; letter-spacing: .8px;
+    }
+    .ioc-value { font-size: 24px; font-weight: 600; word-break: break-all; }
+    .meter { height: 8px; background: #0d141c; border-radius: 999px; overflow: hidden; margin-top: 10px; }
+    .meter span { display: block; height: 100%; background: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
+    tr:last-child td { border-bottom: 0; }
+    td.k { color: var(--muted); width: 34%; }
+    ul.reasons { margin: 6px 0 0; padding-left: 20px; }
+    ul.reasons li { margin-bottom: 4px; }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+    pre {
+      background: #0a0f15; border: 1px solid var(--line); border-radius: 9px;
+      padding: 12px; overflow-x: auto; font-size: 12.5px; color: #b9f2e6; max-height: 380px;
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+    .stat .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .8px; }
+    .stat .val { font-size: 17px; font-weight: 600; margin-top: 3px; word-break: break-word; }
+    .pill { display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .pill.on { color: var(--low); border-color: rgba(53,208,127,.4); }
+    .pill.off { color: var(--high); border-color: rgba(240,140,58,.4); }
+    footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; padding: 18px 20px 40px; text-align: center; }
+    .empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>IOC <span>ENRICHER</span> — Analyst Desk</h1>
+    <div class="sub">
+      Hacktualiz Academy · Sprint Python 2 · Projet 5 — enrichissement d'indicateurs de compromission
+      &nbsp;·&nbsp;
+      {% if db_ready %}<span class="pill on">Supabase connecté</span>{% else %}<span class="pill off">Supabase non configuré</span>{% endif %}
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===================== FORMULAIRE ===================== -->
+  <section class="card">
+    <h2>Analyser un indicateur</h2>
+    <form class="search" action="/analyze" method="post">
+      <input type="text" name="ioc" value="{{ form_value }}" autocomplete="off" autofocus
+             placeholder="185.10.10.5  ·  evil-domain.com  ·  44d88612fea8a8f36de82e1278abb02f">
+      <button type="submit">Enrichir</button>
+    </form>
+    <p class="hint">
+      <b>Formats acceptés :</b> adresse IP (v4/v6), nom de domaine, empreinte MD5 / SHA1 / SHA256.
+      Les IOC neutralisés sont acceptés (<code>185[.]10[.]10[.]5</code> ou <code>hxxps://evil[.]com</code>).
+    </p>
+  </section>
+
+  {% if error %}<div class="alert error"><b>⚠ {{ error }}</b></div>{% endif %}
+  {% if notice %}<div class="alert ok">{{ notice }}</div>{% endif %}
+
+  <!-- ===================== RÉSULTAT ===================== -->
+  {% if result %}
+  <section class="card">
+    <div class="row">
+      <div>
+        <div class="ioc-value mono">{{ result.ioc }}</div>
+        <div style="margin-top:8px">
+          <span class="type-chip">{{ result.ioc_type_label }}</span>
+          <span class="pill">{{ result.enrichissement.source }}</span>
+          <span class="pill">HTTP {{ result.enrichissement.http_status }}</span>
+          {% if result.saved %}<span class="pill on">Enregistré dans Supabase</span>
+          {% else %}<span class="pill off">Non enregistré</span>{% endif %}
+        </div>
+        {% if result.detail %}<div class="hint">{{ result.detail }}</div>{% endif %}
+      </div>
+      <div style="text-align:right; min-width:210px">
+        <span class="badge risk-{{ result.risque.level|lower }}">{{ result.risque.level }}</span>
+        <div class="ioc-value" style="font-size:26px; margin-top:6px">{{ result.risque.score }}<span style="font-size:15px; color:var(--muted)">/100</span></div>
+        <div class="meter"><span style="width: {{ result.risque.score }}%"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Justification du score de risque</h2>
+    <ul class="reasons">
+      {% for raison in result.risque.reasons %}<li>{{ raison }}</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Informations enrichies</h2>
+    <table>
+      {% for label, valeur in result.enrichissement.fields %}
+      <tr><td class="k">{{ label }}</td><td class="mono">{{ valeur if valeur not in (None, '') else '—' }}</td></tr>
+      {% endfor %}
+    </table>
+    {% if result.enrichissement.notes %}
+    <p class="hint">{% for note in result.enrichissement.notes %}{{ note }}<br>{% endfor %}</p>
+    {% endif %}
+    <details>
+      <summary>Voir la réponse JSON brute de l'API — {{ result.enrichissement.endpoint }}</summary>
+      <pre>{{ result.enrichissement.raw | tojson(indent=2) }}</pre>
+    </details>
+  </section>
+  {% endif %}
+
+  <!-- ===================== HISTORIQUE ===================== -->
+  <section class="card">
+    <h2>Historique des analyses (Supabase)</h2>
+
+    {% if db_error %}
+      <div class="alert error">
+        <b>Base de données indisponible :</b> {{ db_error }}
+      </div>
+    {% endif %}
+
+    {% if history %}
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>IOC</th><th>Type</th><th>Source API</th>
+            <th>Risque</th><th>Score</th><th>Date (UTC)</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ligne in history %}
+          <tr>
+            <td class="mono">{{ ligne.id }}</td>
+            <td class="mono" style="word-break:break-all">{{ ligne.ioc }}</td>
+            <td>{{ types.get(ligne.ioc_type, ligne.ioc_type) }}</td>
+            <td class="mono">{{ ligne.source_api or '—' }}</td>
+            <td><span class="badge risk-{{ (ligne.risk_level or 'low')|lower }}">{{ ligne.risk_level }}</span></td>
+            <td class="mono">{{ ligne.risk_score }}</td>
+            <td class="mono">{{ (ligne.created_at or '')[:19].replace('T', ' ') }}</td>
+            <td>
+              <form action="/delete/{{ ligne.id }}" method="post"
+                    onsubmit="return confirm('Supprimer définitivement l\'analyse n°{{ ligne.id }} ?');">
+                <button class="ghost" type="submit">Supprimer</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="hint">{{ total }} analyse(s) affichée(s) — les 25 plus récentes.</p>
+    {% else %}
+      <p class="empty">Aucune analyse enregistrée pour le moment. Soumettez un IOC ci-dessus.</p>
+    {% endif %}
+  </section>
+
+</main>
+
+<footer>
+  Projet 5 — Cyber IOC Enricher · Flask + API externes (ip-api.com, RDAP, CIRCL) + Supabase
+  &nbsp;·&nbsp; <a href="/health" style="color:var(--muted)">/health</a>
+</footer>
+
+</body>
+</html>
