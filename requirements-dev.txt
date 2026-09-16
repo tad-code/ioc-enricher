@@ -3,4 +3,4 @@ pytest==9.0.3
 
 # Optionnel : uniquement pour régénérer les captures d'écran du README
 # (tools/capture_screenshots.py pilote le Chrome déjà installé).
-playwright==1.55.0
+playwright==1.62.0
