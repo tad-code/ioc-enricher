@@ -323,6 +323,11 @@ Après déploiement, l'application publique a été testée automatiquement par 
 
 ## 🎤 Préparation de la soutenance
 
+> 📘 **Mémo complet à lire avant l'oral : [`docs/GUIDE-SOUTENANCE.md`](docs/GUIDE-SOUTENANCE.md)**
+> — le pitch de 60 secondes, les 5 parties de la soutenance, les 4 « tests
+> surprise » les plus probables (avec les modifications de code à faire en
+> direct) et 10 questions/réponses rapides.
+
 **Qu'est-ce qu'une requête HTTP ?**
 C'est un message envoyé par un client (ici Python, avec `requests`) à un serveur
 web pour lui demander une ressource. Elle contient une **méthode** (`GET` pour
