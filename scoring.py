@@ -95,6 +95,29 @@ def compute_risk(ioc_type: str, enrichment: dict) -> dict:
     """
     signaux = list(enrichment.get("signals") or [])
 
+    # --- Cas particulier : adresse non routable (privée, locale, réservée) ---
+    # Aucune base publique ne peut se prononcer : le score n'a pas de sens.
+    # On l'annonce clairement au lieu d'afficher un faux « risque faible ».
+    if enrichment.get("non_routable"):
+        portee = enrichment.get("portee") or {}
+        return {
+            "score": 0,
+            "level": "LOW",
+            "reputation": "HORS PÉRIMÈTRE",
+            "action": "AUCUNE ACTION — ADRESSE INTERNE",
+            "reasons": [
+                f"Adresse {portee.get('portee', 'non routable')} "
+                f"({portee.get('plage', 'plage non routable')}) : "
+                f"{portee.get('raison', 'cette adresse ne peut pas être interrogée sur Internet')}",
+                "Aucune base de renseignement publique ne peut se prononcer sur "
+                "une adresse qui n'est pas routable sur Internet",
+                "Adresse interne au réseau : la vérification se fait dans "
+                "l'inventaire du parc et les journaux, pas dans une API publique",
+            ],
+            "base_score": 0,
+            "details": [],
+        }
+
     # Règles contextuelles ajoutées par le moteur lui-même.
     # (La connaissance « fichier connu / inconnu » vient de l'API : elle est
     #  déjà comptée dans les signaux fournis par le module enrichment.)

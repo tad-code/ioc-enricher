@@ -223,6 +223,22 @@ reponse = requests.request(method, _endpoint(), params=params, json=payload,
     **une seule fois** dans `base.html`, et les quatre pages en **héritent** avec
     `{% raw %}{% extends "base.html" %}{% endraw %}`. Si je change le menu, je le
     change à un seul endroit — c'est l'héritage de gabarits de Jinja.
+15. **Pourquoi 192.168.1.1 ne renvoie-t-il pas d'erreur ?** Parce qu'une adresse
+    privée n'existe pas sur Internet : les API publiques la refusent (« private
+    range »). L'application teste donc sa portée **avant** tout appel réseau, avec
+    le module standard `ipaddress` (`is_private`, `is_loopback`, `is_link_local`,
+    `is_global`), et rend un verdict « HORS PÉRIMÈTRE » argumenté : aucun appel
+    inutile, aucune erreur pour une saisie légitime, et un conseil utile
+    (chercher la machine dans l'inventaire du parc, pas dans une API publique).
+16. **Pourquoi la page d'accueil est-elle si remplie ?** Parce qu'un outil doit se
+    comprendre en cinq secondes. Elle définit un IOC, propose quatre exemples
+    cliquables, affiche un rapport d'exemple pour ne jamais être vide, explique le
+    fonctionnement en quatre étapes et liste les sources. C'est la différence entre
+    un bon moteur et un produit livré.
+17. **Une saisie vide affiche une invitation : pourquoi ?** Un visiteur qui clique
+    sur « Enrichir » sans rien écrire agissait sur une page vide : il reçoit
+    désormais un message qui le renvoie vers les exemples, en HTTP 200. Jamais
+    d'erreur brute pour un geste normal.
 
 ---
 

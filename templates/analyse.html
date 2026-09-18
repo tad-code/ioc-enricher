@@ -3,19 +3,60 @@
 
 {% block contenu %}
 
+  {% if not result and not lot %}
+  <!-- ============ CE QUE FAIT L OUTIL (visible dès l'arrivée) ============ -->
+  <section class="hero">
+    <h2>Que fait cet outil&nbsp;?</h2>
+    <p>
+      Un <b>indicateur de compromission (IOC)</b> est une valeur suspecte repérée dans des journaux
+      ou une alerte de sécurité : une <b>adresse IP</b>, un <b>nom de domaine</b> ou une
+      <b>empreinte de fichier</b>. Prise seule, cette valeur ne dit rien.
+    </p>
+    <p>
+      <b>IOC Enricher</b> interroge plusieurs sources publiques de renseignement et en tire un
+      verdict directement exploitable : <b>réputation</b>, <b>niveau de risque</b>,
+      <b>score sur 100</b>, <b>justification de ce score</b> et <b>action à mener</b>. Chaque
+      analyse est conservée en base de données, ce qui alimente l'historique et le tableau de bord.
+    </p>
+
+    <div class="exemples">
+      <form action="/analyze" method="post">
+        <input type="hidden" name="ioc" value="185.220.101.1">
+        <button class="exemple" type="submit">Adresse IP suspecte<span>185.220.101.1 — nœud de sortie Tor</span></button>
+      </form>
+      <form action="/analyze" method="post">
+        <input type="hidden" name="ioc" value="promo-cadeau-gratuit.xyz">
+        <button class="exemple" type="submit">Nom de domaine douteux<span>promo-cadeau-gratuit.xyz — extension à risque</span></button>
+      </form>
+      <form action="/analyze" method="post">
+        <input type="hidden" name="ioc" value="44d88612fea8a8f36de82e1278abb02f">
+        <button class="exemple" type="submit">Empreinte de fichier<span>44d88612fea8a8f36de82e1278abb02f — MD5</span></button>
+      </form>
+      <form action="/analyze" method="post">
+        <input type="hidden" name="ioc" value="192.168.1.1">
+        <button class="exemple" type="submit">Adresse interne<span>192.168.1.1 — hors périmètre Internet</span></button>
+      </form>
+    </div>
+    <p class="hint" style="margin-top:12px">
+      Chaque bouton lance une analyse réelle : le rapport s'affiche immédiatement.
+    </p>
+  </section>
+  {% endif %}
+
   <!-- ===================== FORMULAIRE ===================== -->
   <section class="card">
-    <h2>Analyser un indicateur (ou plusieurs)</h2>
+    <h2>{% if result or lot %}Analyser un autre indicateur{% else %}Analyser votre propre indicateur{% endif %}</h2>
     <form class="search" action="/analyze" method="post">
-      <textarea name="ioc" rows="2" autocomplete="off" autofocus maxlength="512"
+      <textarea name="ioc" rows="2" autocomplete="off" maxlength="512"
                 placeholder="185.10.10.5&#10;evil-domain.com&#10;44d88612fea8a8f36de82e1278abb02f">{{ form_value }}</textarea>
       <button type="submit">Enrichir</button>
     </form>
     <p class="hint">
       <b>Formats acceptés :</b> adresse IP (v4/v6), nom de domaine, empreinte MD5 / SHA1 / SHA256.
-      Les IOC neutralisés sont acceptés (<code>185[.]10[.]10[.]5</code> ou <code>hxxps://evil[.]com</code>).
+      Les IOC neutralisés des rapports de sécurité sont acceptés
+      (<code>185[.]10[.]10[.]5</code>, <code>hxxps://evil[.]com</code>).
       <br>
-      <b>Mode lot :</b> collez plusieurs indicateurs (un par ligne, ou séparés par des virgules) —
+      <b>Mode lot :</b> collez plusieurs indicateurs (un par ligne ou séparés par des virgules) —
       jusqu'à {{ max_lot }} par analyse.
     </p>
   </section>
@@ -32,7 +73,7 @@
         <div style="margin-top:8px">
           <span class="type-chip">{{ result.ioc_type_label }}</span>
           <span class="pill">{{ result.enrichissement.source }}</span>
-          <span class="pill">HTTP {{ result.enrichissement.http_status }}</span>
+          {% if result.enrichissement.http_status %}<span class="pill">HTTP {{ result.enrichissement.http_status }}</span>{% endif %}
           {% if result.saved %}<span class="pill on">Analyse enregistrée</span>
           {% else %}<span class="pill off">Non enregistrée</span>{% endif %}
         </div>
@@ -41,9 +82,14 @@
       <div style="text-align:right; min-width:230px">
         <div class="hint" style="margin:0">Réputation</div>
         <div class="risk-text-{{ result.risque.level|lower }}" style="font-size:22px; font-weight:700; letter-spacing:.5px">{{ result.risque.reputation }}</div>
-        <span class="badge risk-{{ result.risque.level|lower }}" style="margin-top:8px">RISQUE {{ result.risque.level }}</span>
-        <div class="ioc-value" style="font-size:26px; margin-top:6px">{{ result.risque.score }}<span style="font-size:15px; color:var(--muted)">/100</span></div>
-        <div class="meter"><span style="width: {{ result.risque.score }}%"></span></div>
+        {% if result.enrichissement.non_routable %}
+          <!-- Adresse hors Internet : ni score ni niveau de risque n'ont de sens. -->
+          <span class="pill off" style="margin-top:8px; display:inline-block">Aucun score — adresse hors Internet</span>
+        {% else %}
+          <span class="badge risk-{{ result.risque.level|lower }}" style="margin-top:8px">RISQUE {{ result.risque.level }}</span>
+          <div class="ioc-value" style="font-size:26px; margin-top:6px">{{ result.risque.score }}<span style="font-size:15px; color:var(--muted)">/100</span></div>
+          <div class="meter"><span style="width: {{ result.risque.score }}%"></span></div>
+        {% endif %}
       </div>
     </div>
   </section>
@@ -82,7 +128,7 @@
     <p class="hint">{% for note in result.enrichissement.notes %}{{ note }}<br>{% endfor %}</p>
     {% endif %}
     <details>
-      <summary>Voir la réponse JSON brute de l'API — {{ result.enrichissement.endpoint }}</summary>
+      <summary>Voir la réponse brute de la source — {{ result.enrichissement.endpoint }}</summary>
       <pre>{{ result.enrichissement.raw | tojson(indent=2) }}</pre>
     </details>
   </section>
@@ -127,6 +173,102 @@
     <p class="hint"><b>{{ ignorees }} indicateur(s) non traité(s)</b> : la limite est de {{ max_lot }} par analyse
       (temps d'exécution de la fonction d'hébergement). Relancez-les dans un second lot.</p>
     {% endif %}
+  </section>
+  {% endif %}
+
+  {% if not result and not lot %}
+  <!-- ============ EXEMPLE DE RAPPORT : la page n'est jamais vide ============ -->
+  <section class="card">
+    <h2>Exemple de rapport produit par l'outil</h2>
+    <div class="exemple-rapport">
+      <div class="titre">Analyse réelle de 185.220.101.1 — adresse signalée comme nœud de sortie Tor</div>
+      <div class="row">
+        <div>
+          <div class="ioc-value mono" style="font-size:20px">185.220.101.1</div>
+          <div style="margin-top:8px">
+            <span class="type-chip">Adresse IP</span>
+            <span class="pill">ip-api.com</span>
+            <span class="pill">HTTP 200</span>
+            <span class="pill on">Analyse enregistrée</span>
+          </div>
+        </div>
+        <div style="text-align:right; min-width:210px">
+          <div class="hint" style="margin:0">Réputation</div>
+          <div class="risk-text-high" style="font-size:20px; font-weight:700">SUSPECT</div>
+          <span class="badge risk-high" style="margin-top:8px">RISQUE HIGH</span>
+          <div class="ioc-value" style="font-size:24px; margin-top:6px">70<span style="font-size:14px; color:var(--muted)">/100</span></div>
+          <div class="meter"><span style="width:70%"></span></div>
+        </div>
+      </div>
+      <div class="action action-high" style="margin-top:16px">
+        <span class="action-label">Action recommandée</span>
+        <span class="action-value">BLOQUER ET INVESTIGUER</span>
+      </div>
+      <h3>Justification du score</h3>
+      <ul class="reasons">
+        <li>Score de départ d'un indicateur à vérifier — <b>+10</b></li>
+        <li>Adresse hébergée dans un datacenter / hébergeur (hosting) — <b>+25</b></li>
+        <li>Adresse détectée comme proxy / VPN / Tor — <b>+35</b></li>
+      </ul>
+      <h3>Informations enrichies</h3>
+      <table>
+        <tr><td class="k">Pays</td><td class="mono">Germany (DE)</td></tr>
+        <tr><td class="k">Fournisseur (ISP)</td><td class="mono">Stiftung Erneuerbare Freiheit</td></tr>
+        <tr><td class="k">ASN / Réseau</td><td class="mono">AS60729</td></tr>
+        <tr><td class="k">DNS inverse</td><td class="mono">berlin01.tor-exit.artikel10.org</td></tr>
+      </table>
+      <p class="hint" style="margin-top:12px">
+        Le rapport complet, avec la réponse brute de la source, s'affiche après chaque analyse.
+        Cliquez sur un exemple ci-dessus pour en produire un.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== COMMENT ÇA MARCHE ===================== -->
+  <section class="card">
+    <h2>Comment ça marche</h2>
+    <div class="etapes">
+      <div class="etape">
+        <b><span class="num">1.</span> Détection du type</b>
+        L'indicateur est analysé par expressions régulières : adresse IP (v4/v6), nom de domaine,
+        empreinte MD5 / SHA1 / SHA256. Les IOC neutralisés des rapports (<code>hxxp</code>,
+        <code>[.]</code>) sont remis en forme automatiquement.
+      </div>
+      <div class="etape">
+        <b><span class="num">2.</span> Enrichissement</b>
+        La source adaptée au type est interrogée : ip-api.com pour une IP, RDAP et le DNS Google
+        pour un domaine, CIRCL hashlookup pour une empreinte. Une adresse privée est reconnue
+        localement — inutile d'interroger Internet à son sujet.
+      </div>
+      <div class="etape">
+        <b><span class="num">3.</span> Notation du risque</b>
+        Chaque signal observé ajoute des points à un score de 0 à 100 (proxy/Tor +35,
+        hébergement +25, absence de SPF/DMARC, domaine très récent…). Chaque point est
+        expliqué en français dans le rapport.
+      </div>
+      <div class="etape">
+        <b><span class="num">4.</span> Restitution et mémoire</b>
+        Verdict et action à mener, puis enregistrement en base de données : les analyses passées
+        restent consultables dans l'historique, le tableau de bord et l'export CSV.
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Sources interrogées et accès programmé</h2>
+    <div class="sources">
+      <span class="pill">ip-api.com — géolocalisation, proxy/VPN, hébergeur</span>
+      <span class="pill">rdap.org — enregistrement d'un domaine</span>
+      <span class="pill">dns.google — SPF, DMARC, MX (DNS-over-HTTPS)</span>
+      <span class="pill">hashlookup.circl.lu — empreintes connues</span>
+      <span class="pill">Python ipaddress — portée des adresses IP</span>
+    </div>
+    <p class="hint" style="margin-top:12px">
+      Le moteur est aussi utilisable sans interface :
+      <code>GET /api/analyze?ioc=8.8.8.8&amp;save=0</code> renvoie le rapport en JSON ;
+      <code>GET /export.csv</code> exporte l'historique complet au format tableur.
+      <a href="/api">Voir la documentation de l'API</a>.
+    </p>
   </section>
   {% endif %}
 

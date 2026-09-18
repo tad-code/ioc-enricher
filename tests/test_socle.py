@@ -10,7 +10,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ioc_parser import detect_type, decoupe_iocs, parse_ioc, parse_many, refang  # noqa: E402
+from ioc_parser import detect_type, decoupe_iocs, parse_ioc, parse_many, portee_ip, refang  # noqa: E402
+import enrichment  # noqa: E402
 import scoring  # noqa: E402
 
 
@@ -185,3 +186,84 @@ def test_tld_suspect_est_une_raison():
 def test_un_domaine_ancien_reduit_le_score():
     resultat = scoring.compute_risk("domain", {"signals": [{"points": -10, "label": "ancien"}], "ioc": "gouv.ci", "data": {}})
     assert resultat["score"] < scoring.BASE_SCORE
+
+
+# ---------------------------------------------------------------------------
+# Portée des adresses IP : privées, locales, réservées (aucun appel réseau)
+# ---------------------------------------------------------------------------
+
+def test_adresse_publique_n_a_pas_de_portee_particuliere():
+    """Une adresse routable part vers l'API : portee_ip retourne None."""
+    assert portee_ip("8.8.8.8") is None
+    assert portee_ip("185.220.101.1") is None
+    assert portee_ip("2001:4860:4860::8888") is None
+
+
+def test_adresses_privees_reconnues():
+    assert portee_ip("192.168.1.1")["portee"] == "privée"
+    assert portee_ip("10.0.0.1")["portee"] == "privée"
+    assert portee_ip("172.16.5.4")["portee"] == "privée"
+
+
+def test_adresses_locales_et_lien_local():
+    assert portee_ip("127.0.0.1")["portee"] == "locale"
+    assert portee_ip("::1")["portee"] == "locale"
+    assert portee_ip("169.254.1.1")["portee"] == "lien-local"
+    assert portee_ip("fe80::1")["portee"] == "lien-local"
+
+
+def test_adresses_non_routables_diverses():
+    assert portee_ip("0.0.0.0")["portee"] == "non spécifiée"
+    assert portee_ip("224.0.0.1")["portee"] == "multicast"
+    assert portee_ip("pas-une-ip") is None
+
+
+def test_adresse_privee_est_analysee_sans_appel_reseau():
+    """Le cas qui échouait : 192.168.1.1 doit rendre un VERDICT, pas une erreur."""
+    enrichissement = enrichment.enrich("192.168.1.1", "ip")
+
+    assert enrichissement["non_routable"] is True
+    assert enrichissement["http_status"] is None      # aucun appel HTTP effectué
+    assert "ip-api" not in enrichissement["source"]
+
+    risque = scoring.compute_risk("ip", enrichissement)
+    assert risque["score"] == 0
+    assert risque["reputation"] == "HORS PÉRIMÈTRE"
+    assert "INTERNE" in risque["action"]
+    assert len(risque["reasons"]) == 3
+
+
+def test_adresse_privee_expliquee_dans_les_champs():
+    enrichissement = enrichment.enrich("192.168.1.1", "ip")
+    champs = dict(enrichissement["fields"])
+
+    assert champs["Routable sur Internet"] == "non"
+    assert champs["Portée"] == "privée"
+    assert "192.168.0.0/16" in champs["Plage d'appartenance"]
+    assert "RFC 1918" in champs["Explication"]
+
+
+# ---------------------------------------------------------------------------
+# Pages web : jamais d'erreur brute pour un simple visiteur
+# ---------------------------------------------------------------------------
+
+def test_soumission_vide_invite_au_lieu_d_une_erreur():
+    from app import app
+
+    reponse = app.test_client().post("/analyze", data={"ioc": "   "})
+
+    assert reponse.status_code == 200
+    assert "Aucun indicateur saisi" in reponse.get_data(as_text=True)
+
+
+def test_la_page_d_accueil_presente_l_outil():
+    """Un visiteur qui n'ouvre qu'une page doit comprendre l'outil."""
+    from app import app
+
+    contenu = app.test_client().get("/").get_data(as_text=True)
+
+    assert "Que fait cet outil" in contenu
+    assert "indicateur de compromission" in contenu
+    assert "Adresse IP suspecte" in contenu        # exemple lançable en un clic
+    assert "Comment ça marche" in contenu
+    assert "185.220.101.1" in contenu              # rapport d'exemple visible d'emblée

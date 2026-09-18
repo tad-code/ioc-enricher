@@ -83,6 +83,50 @@ def detect_type(value: str):
     return None
 
 
+def portee_ip(value: str):
+    """Indique si une adresse IP est routable sur Internet.
+
+    Retourne None pour une adresse publique (donc analysable par les bases
+    publiques), sinon un dictionnaire décrivant sa portée :
+
+        {"portee": "privée", "plage": "192.168.0.0/16",
+         "raison": "plage d'adressage privée (RFC 1918)"}
+
+    Pourquoi ce contrôle existe : les API publiques de renseignement refusent
+    ces adresses (ip-api.com répond « private range »). Sans ce test, l'outil
+    afficherait une ERREUR alors que la bonne réponse est « cette adresse
+    n'existe pas sur Internet, aucune base publique ne peut la connaître ».
+
+    L'ordre des tests compte : en Python, une adresse de boucle locale
+    (127.0.0.1) est aussi considérée comme privée — on veut donc la nommer
+    précisément « locale » plutôt que « privée ».
+    """
+    try:
+        adresse = ipaddress.ip_address(value)
+    except ValueError:
+        return None
+
+    if adresse.is_unspecified:
+        return {"portee": "non spécifiée", "plage": "0.0.0.0 ou ::",
+                "raison": "adresse nulle : elle ne désigne aucun hôte"}
+    if adresse.is_loopback:
+        return {"portee": "locale", "plage": "127.0.0.0/8 ou ::1",
+                "raison": "adresse de boucle locale : elle désigne la machine elle-même"}
+    if adresse.is_link_local:
+        return {"portee": "lien-local", "plage": "169.254.0.0/16 ou fe80::/10",
+                "raison": "adresse auto-attribuée, valable uniquement sur le réseau local"}
+    if adresse.is_private:
+        return {"portee": "privée", "plage": "10.0.0.0/8, 172.16.0.0/12 ou 192.168.0.0/16",
+                "raison": "plage d'adressage privée (RFC 1918)"}
+    if adresse.is_multicast:
+        return {"portee": "multicast", "plage": "224.0.0.0/4 ou ff00::/8",
+                "raison": "adresse de diffusion de groupe, jamais attribuée à un hôte"}
+    if adresse.is_reserved or not adresse.is_global:
+        return {"portee": "réservée", "plage": "plage réservée par l'IANA",
+                "raison": "plage réservée à un usage particulier, non routable"}
+    return None
+
+
 def parse_ioc(value: str) -> dict:
     """Valide et normalise l'IOC saisi par l'utilisateur.
 

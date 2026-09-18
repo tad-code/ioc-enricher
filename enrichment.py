@@ -32,6 +32,8 @@ import socket
 
 import requests
 
+from ioc_parser import portee_ip
+
 log = logging.getLogger("ioc-enricher.api")
 
 TIMEOUT = 8  # secondes : on ne bloque pas l'utilisateur indéfiniment
@@ -203,8 +205,61 @@ def _enrich_ip_with_ipapi(ip: str) -> dict:
     }
 
 
+def enrich_ip_interne(ip: str, portee: dict) -> dict:
+    """Analyse locale d'une adresse non routable : AUCUN appel réseau.
+
+    Interroger une base publique à propos d'une adresse privée (192.168.1.1)
+    n'a aucun sens : elle n'appartient à personne sur Internet. Les API
+    répondent d'ailleurs « private range ». Plutôt que de transformer cela en
+    erreur rouge, l'outil rend un verdict honnête et explique à l'analyste ce
+    qu'il doit faire à la place.
+
+    Le format de retour est identique à celui des autres sources, pour que le
+    reste de l'application (affichage, scoring, enregistrement) n'ait rien à
+    savoir de la différence.
+    """
+    return {
+        "source": "Analyse locale (Python ipaddress)",
+        "endpoint": "local://ipaddress (aucune requête réseau)",
+        "http_status": None,
+        "raw": {
+            "adresse": ip,
+            "portee": portee.get("portee"),
+            "plage": portee.get("plage"),
+            "raison": portee.get("raison"),
+            "routable": False,
+        },
+        "data": {"country": None, "country_code": None},
+        "fields": [
+            ("Adresse analysée", ip),
+            ("Portée", portee.get("portee")),
+            ("Plage d'appartenance", portee.get("plage")),
+            ("Explication", portee.get("raison")),
+            ("Routable sur Internet", "non"),
+            ("Sources publiques interrogeables", "aucune (adresse hors Internet)"),
+        ],
+        "signals": [],
+        "notes": [
+            "Adresse non routable : les bases de renseignement publiques ne "
+            "peuvent rien dire d'utile sur elle, aucun appel réseau n'a donc "
+            "été effectué.",
+            "Si cette adresse apparaît dans une alerte, elle est interne à votre "
+            "réseau : cherchez la machine correspondante dans votre inventaire "
+            "ou vos journaux, pas dans une API publique.",
+        ],
+        "non_routable": True,
+        "portee": portee,
+    }
+
+
 def enrich_ip(ip: str) -> dict:
     """Enrichit une IP : AbuseIPDB si une clé existe, sinon ip-api.com en secours."""
+    # Cas particulier traité AVANT tout appel réseau : adresse privée, locale,
+    # lien-local, multicast... Les bases publiques la refuseraient.
+    portee = portee_ip(ip)
+    if portee:
+        return enrich_ip_interne(ip, portee)
+
     if os.getenv("ABUSEIPDB_API_KEY", "").strip():
         try:
             return _enrich_ip_with_abuseipdb(ip)

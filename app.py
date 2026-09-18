@@ -298,6 +298,16 @@ def analyze():
     """Cœur de l'application : analyse d'un ou plusieurs IOC."""
     valeur_saisie = request.form.get("ioc", "")
 
+    # --- Saisie vide : on invite au lieu d'afficher une erreur -------------
+    # Un visiteur qui clique sur « Enrichir » sans rien écrire ne doit pas
+    # tomber sur un message d'échec : il est renvoyé vers les exemples.
+    if not valeur_saisie.strip():
+        return analyser_page(
+            notice="Aucun indicateur saisi : cliquez sur un exemple ci-dessus, ou "
+                   "collez une adresse IP, un nom de domaine ou une empreinte de fichier.",
+            form_value="",
+        )
+
     # --- Mode lot : plusieurs indicateurs collés d'un coup ----------------
     lot = parse_many(valeur_saisie, maximum=MAX_LOT)
     if lot["total"] > 1:

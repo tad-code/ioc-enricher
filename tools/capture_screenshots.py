@@ -40,7 +40,7 @@ with sync_playwright() as play:
 
     # --- 2. Rapport d'une adresse IP --------------------------------------
     page.fill("textarea[name=ioc]", "185.220.101.1")
-    page.click("button[type=submit]")
+    page.click("form.search button[type=submit]")
     attendre_rapport(page)
     page.screenshot(path=capture("capture-rapport.png"), full_page=True)
     print("capture-rapport.png")
@@ -54,7 +54,7 @@ with sync_playwright() as play:
     # --- 4. Analyse d'un domaine : SPF / DMARC ----------------------------
     page.goto(BASE, wait_until="networkidle")
     page.fill("textarea[name=ioc]", "github.com")
-    page.click("button[type=submit]")
+    page.click("form.search button[type=submit]")
     attendre_rapport(page)
     page.screenshot(path=capture("capture-domaine.png"), full_page=True)
     print("capture-domaine.png")
@@ -63,12 +63,19 @@ with sync_playwright() as play:
     page.goto(BASE, wait_until="networkidle")
     page.fill("textarea[name=ioc]",
               "185.220.101.1\ngithub.com\npromo-cadeau-gratuit.xyz\n44d88612fea8a8f36de82e1278abb02f")
-    page.click("button[type=submit]")
+    page.click("form.search button[type=submit]")
     page.wait_for_selector("text=Résultats du lot", timeout=180_000)
     page.screenshot(path=capture("capture-lot.png"), full_page=True)
     print("capture-lot.png")
 
     # --- 6. Tableau de bord -----------------------------------------------
+    page.goto(BASE, wait_until="networkidle")
+    page.fill("textarea[name=ioc]", "192.168.1.1")
+    page.click("form.search button[type=submit]")
+    attendre_rapport(page)
+    page.screenshot(path=capture("capture-interne.png"), full_page=True)
+    print("capture-interne.png")
+
     page.goto(BASE + "/tableau-de-bord", wait_until="networkidle")
     page.screenshot(path=capture("capture-tableau-de-bord.png"), full_page=True)
     print("capture-tableau-de-bord.png")

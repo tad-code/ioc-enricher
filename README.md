@@ -41,7 +41,9 @@ risque justifié et un historique centralisé.
 
 | Fonctionnalité | Description |
 |---|---|
-| Détection automatique du type | L'utilisateur ne choisit rien : l'application reconnaît une IP, un domaine ou un hash. |
+| Détection du type | L'utilisateur ne choisit rien : l'application reconnaît une IP, un domaine ou un hash. |
+| Adresses non routables | Une adresse privée, locale ou réservée (`192.168.1.1`, `127.0.0.1`, `fe80::1`) est reconnue **localement** : verdict « HORS PÉRIMÈTRE » argumenté, sans appel réseau inutile et sans erreur. |
+| Prise en main immédiate | La page d'accueil explique ce qu'est un IOC, propose **4 exemples lançables en un clic** et affiche un rapport d'exemple : la page n'est jamais vide. |
 | Validation de la saisie | Les IOC mal formés sont refusés avec un message clair (jamais de `ERROR` brut). |
 | Prise en charge des IOC neutralisés | `185[.]10[.]10[.]5` et `hxxps://evil[.]com` sont ré-acceptés automatiquement (*refang*). |
 | Enrichissement par API externe | Interrogation d'une API publique selon le type d'IOC, réponse JSON exploitée. |
@@ -68,7 +70,7 @@ risque justifié et un historique centralisé.
 | Requêtes HTTP | **requests** | Bibliothèque standard de fait pour appeler une API REST. |
 | Base de données | **Supabase** (PostgreSQL) | Demandée par le sujet, avec API REST intégrée. |
 | Configuration | **python-dotenv** + variables d'environnement | Aucune clé dans le code. |
-| Tests | **pytest** | 24 tests unitaires automatisés. |
+| Tests | **pytest** | 32 tests unitaires automatisés. |
 | Hébergement | **Vercel** | Déploiement public gratuit en une commande. |
 
 ## 5. API utilisées
@@ -246,6 +248,7 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 | Réponse JSON brute de l'API (dépliée) | [`docs/capture-json.png`](docs/capture-json.png) |
 | Analyse d'un nom de domaine (SPF / DMARC) | [`docs/capture-domaine.png`](docs/capture-domaine.png) |
 | Mode « analyse par lots » | [`docs/capture-lot.png`](docs/capture-lot.png) |
+| Adresse privée : verdict « hors périmètre » | [`docs/capture-interne.png`](docs/capture-interne.png) |
 | Page « Tableau de bord » | [`docs/capture-tableau-de-bord.png`](docs/capture-tableau-de-bord.png) |
 | Page « Historique » | [`docs/capture-historique.png`](docs/capture-historique.png) |
 | Page « API JSON » | [`docs/capture-api.png`](docs/capture-api.png) |
@@ -301,13 +304,15 @@ vercel --prod
 
 ```bash
 python -m pytest -v
-# 24 passed
+# 32 passed
 ```
 
 Ils couvrent : la détection du type d'IOC, le *refang*, la saisie vide, la
-saisie invalide, la normalisation (`www.`, casse), les fourchettes de score, le
-verdict de réputation, l'action recommandée, la découpe du mode « par lots »
-(séparateurs, doublons, limite) et le calcul des statistiques du tableau de bord.
+saisie invalide, la normalisation (`www.`, casse), la **portée des adresses IP**
+(privée, locale, lien-local, réservée) et l'analyse d'une adresse privée sans
+appel réseau, les fourchettes de score, le verdict de réputation, l'action
+recommandée, la découpe du mode « par lots » (séparateurs, doublons, limite),
+le contenu de la page d'accueil et le calcul des statistiques du tableau de bord.
 
 ### Test des API en conditions réelles
 
@@ -330,7 +335,7 @@ Résultat obtenu le 16/09/2026 :
 ### Test de l'application déployée (bout en bout)
 
 Après déploiement, l'application publique a été testée automatiquement par script
-(appels HTTP réels sur l'URL de production) : **46 vérifications, 46 réussies**.
+(appels HTTP réels sur l'URL de production) : **55 vérifications, 55 réussies**.
 
 | Vérification | Résultat |
 |---|---|

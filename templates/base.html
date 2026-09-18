@@ -134,6 +134,29 @@
     .pill.off { color: var(--high); border-color: rgba(240,140,58,.4); }
     .endpoints { font-size: 13.5px; }
     .endpoints code, code.cle { background: #0d141c; border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; }
+    .hero {
+      background: linear-gradient(135deg, #101d28, var(--panel));
+      border: 1px solid var(--line); border-radius: 12px; padding: 22px; margin-bottom: 18px;
+    }
+    .hero h2 { margin: 0 0 8px; font-size: 21px; text-transform: none; letter-spacing: 0; color: var(--txt); }
+    .hero p { margin: 0; color: var(--muted); font-size: 14.5px; max-width: 800px; }
+    .hero p + p { margin-top: 8px; }
+    .hero b { color: var(--txt); }
+    .exemples { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 16px; }
+    .exemple {
+      width: 100%; text-align: left; background: var(--panel-2); border: 1px solid var(--line);
+      color: var(--txt); font-weight: 600; padding: 12px 14px; border-radius: 10px; font-size: 13.5px;
+    }
+    .exemple:hover { border-color: var(--accent); filter: none; }
+    .exemple span { display: block; color: var(--muted); font-weight: 400; font-size: 12px; margin-top: 4px; word-break: break-all; font-family: "Cascadia Mono", Consolas, monospace; }
+    .etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 12px; }
+    .etape { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px; font-size: 13.5px; color: var(--muted); }
+    .etape b { display: block; color: var(--txt); margin-bottom: 4px; }
+    .etape .num { color: var(--accent); font-weight: 700; }
+    .sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .sources .pill { font-size: 12.5px; }
+    .exemple-rapport { border: 1px dashed var(--line); border-radius: 10px; padding: 16px; background: #0e1620; }
+    .exemple-rapport .titre { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
   </style>
 </head>
 <body>
