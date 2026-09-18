@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="IOC Enricher">
+  <!--
+    Logo IOC Enricher : un bouclier (la protection) contenant un balayage
+    radar autour d'un point (l'indicateur analysé, que l'outil « éclaire »).
+    Aucune image externe : le fichier est servi par l'application elle-même.
+  -->
+  <defs>
+    <linearGradient id="bouclier" x1="8" y1="4" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5ff0d8"/>
+      <stop offset="1" stop-color="#1c9c8a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bouclier -->
+  <path d="M24 3.5 L41 10.2 V22.5 C41 33.1 34.1 40.1 24 44.4 C13.9 40.1 7 33.1 7 22.5 V10.2 Z"
+        fill="none" stroke="url(#bouclier)" stroke-width="2.8" stroke-linejoin="round"/>
+
+  <!-- Balayage radar -->
+  <path d="M24 15.5 A9.3 9.3 0 0 1 33.3 24.8" fill="none" stroke="#35d0ba" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M24 20.4 A4.4 4.4 0 0 1 28.4 24.8" fill="none" stroke="#35d0ba" stroke-width="2.4" stroke-linecap="round" opacity="0.72"/>
+
+  <!-- L'indicateur analysé -->
+  <circle cx="24" cy="24.8" r="2.6" fill="#35d0ba"/>
+</svg>

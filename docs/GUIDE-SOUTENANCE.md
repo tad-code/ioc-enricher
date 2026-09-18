@@ -239,6 +239,10 @@ reponse = requests.request(method, _endpoint(), params=params, json=payload,
     sur « Enrichir » sans rien écrire agissait sur une page vide : il reçoit
     désormais un message qui le renvoie vers les exemples, en HTTP 200. Jamais
     d'erreur brute pour un geste normal.
+18. **Pourquoi un logo et un favicon ?** Parce qu'un produit livré a une identité :
+    l'onglet du navigateur montre une icône, l'en-tête porte une marque. Les deux
+    sont des SVG dessinés à la main (bouclier + balayage radar), servis par
+    l'application — aucun service externe, donc la CSP stricte reste intacte.
 
 ---
 

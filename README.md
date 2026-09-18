@@ -43,6 +43,7 @@ risque justifié et un historique centralisé.
 |---|---|
 | Détection du type | L'utilisateur ne choisit rien : l'application reconnaît une IP, un domaine ou un hash. |
 | Adresses non routables | Une adresse privée, locale ou réservée (`192.168.1.1`, `127.0.0.1`, `fe80::1`) est reconnue **localement** : verdict « HORS PÉRIMÈTRE » argumenté, sans appel réseau inutile et sans erreur. |
+| Identité visuelle | Logo et favicon **SVG dessinés à la main** (bouclier + balayage radar), servis par l'application elle-même : aucune ressource externe, compatible avec la CSP stricte. |
 | Prise en main immédiate | La page d'accueil explique ce qu'est un IOC, propose **4 exemples lançables en un clic** et affiche un rapport d'exemple : la page n'est jamais vide. |
 | Validation de la saisie | Les IOC mal formés sont refusés avec un message clair (jamais de `ERROR` brut). |
 | Prise en charge des IOC neutralisés | `185[.]10[.]10[.]5` et `hxxps://evil[.]com` sont ré-acceptés automatiquement (*refang*). |
@@ -220,6 +221,8 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 | `templates/tableau_bord.html` | Page « Tableau de bord » : statistiques et barres. |
 | `templates/historique.html` | Page « Historique » : tableau, suppression, export CSV. |
 | `templates/api.html` | Page « API JSON » : documentation des routes. |
+| `static/logo.svg` | Logo du projet (bouclier + balayage radar), dessiné en SVG. |
+| `static/favicon.svg` | Icône d'onglet du navigateur, déclinée du logo. |
 | `api/index.py` | Point d'entrée pour le déploiement serverless sur Vercel. |
 | `sql/schema.sql` | Création de la table `ioc_analyses` et des règles d'accès (RLS). |
 | `tests/test_socle.py` | Tests unitaires (pytest). |

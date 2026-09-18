@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Favicon : le même bouclier, sur un fond sombre, traits épaissis pour
+       rester lisible à 16 pixels (onglet du navigateur). -->
+  <rect width="48" height="48" rx="11" fill="#0b1017"/>
+  <path d="M24 7 L39 12.5 V22.5 C39 31.4 33 37.4 24 41.2 C15 37.4 9 31.4 9 22.5 V12.5 Z"
+        fill="none" stroke="#35d0ba" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M24 17.5 A7.6 7.6 0 0 1 31.6 25.1" fill="none" stroke="#35d0ba" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="24" cy="25.1" r="2.8" fill="#35d0ba"/>
+</svg>
