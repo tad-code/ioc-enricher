@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titre %}Glossaire{% endblock %}
+
+{% block contenu %}
+
+<section class="hero">
+  <h2>Glossaire</h2>
+  <p>
+    Tout le vocabulaire employé par l'outil, expliqué en français courant. Un rapport
+    d'analyse qui affiche <b>AS13335</b> ou <b>p=reject</b> sans dire ce que c'est oblige
+    son lecteur à faire confiance. Ici, rien n'est censé rester obscur.
+  </p>
+  <p>
+    Les mêmes explications sont attachées, sur la page d'analyse, à <b>chaque information
+    relevée</b> et à <b>chaque signal qui pèse dans le score</b>. Cette page les rassemble
+    pour qu'on puisse aussi les consulter avant d'analyser quoi que ce soit.
+  </p>
+  <div class="stat-grid" style="margin-top:16px">
+    <div class="stat"><div class="lbl">Informations expliquées</div><div class="val">{{ compte.champs }}</div></div>
+    <div class="stat"><div class="lbl">Signaux de score expliqués</div><div class="val">{{ compte.signaux }}</div></div>
+    <div class="stat"><div class="lbl">Termes définis</div><div class="val">{{ compte.concepts }}</div></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Aller à une section</h2>
+  <div class="glossaire-cat">
+    {% for bloc in glossaire %}
+    <a href="#{{ bloc.categorie | replace(' ', '-') | lower }}" class="pill">{{ bloc.categorie }} ({{ bloc.concepts | length }})</a>
+    {% endfor %}
+  </div>
+</section>
+
+{% for bloc in glossaire %}
+<section class="card" id="{{ bloc.categorie | replace(' ', '-') | lower }}">
+  <h2>{{ bloc.categorie }}</h2>
+  {% for concept in bloc.concepts %}
+  <div class="glossaire-terme">
+    <h3>{{ concept.terme }}</h3>
+    <p>{{ concept.explication }}</p>
+    <p class="pratique">{{ concept.en_pratique }}</p>
+  </div>
+  {% endfor %}
+</section>
+{% endfor %}
+
+<section class="card">
+  <h2>Comprendre un rapport d'analyse</h2>
+  <p class="hint" style="margin-top:0">
+    Sur la page d'analyse, le rapport se lit dans cet ordre :
+  </p>
+  <div class="etapes">
+    <div class="etape">
+      <b><span class="num">1.</span> Le verdict</b>
+      Niveau de risque, réputation et action recommandée. C'est la conclusion, à lire en premier.
+    </div>
+    <div class="etape">
+      <b><span class="num">2.</span> La justification</b>
+      Chaque signal, son poids en points, et le calcul complet du score. Aucun point n'est attribué sans raison affichée.
+    </div>
+    <div class="etape">
+      <b><span class="num">3.</span> Les informations</b>
+      Ce que les sources ont réellement répondu, champ par champ, avec l'explication de chacun.
+    </div>
+    <div class="etape">
+      <b><span class="num">4.</span> La réponse brute</b>
+      Le contenu intégral renvoyé par la source, pour vérifier que la synthèse n'a rien déformé.
+    </div>
+  </div>
+  <p class="hint" style="margin-top:16px">
+    <a href="/">Analyser un indicateur</a>
+  </p>
+</section>
+
+{% endblock %}

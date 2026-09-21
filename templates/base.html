@@ -161,6 +161,52 @@
     .sources .pill { font-size: 12.5px; }
     .exemple-rapport { border: 1px dashed var(--line); border-radius: 10px; padding: 16px; background: #0e1620; }
     .exemple-rapport .titre { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+
+    /* ---- Éléments expliqués : chaque information peut se justifier ---- */
+    .explique {
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+      margin-bottom: 8px; overflow: hidden;
+    }
+    .explique > summary {
+      list-style: none; cursor: pointer; padding: 11px 14px;
+      display: flex; gap: 11px; align-items: baseline; font-size: 14px; color: var(--txt);
+      transition: background .12s;
+    }
+    .explique > summary::-webkit-details-marker { display: none; }
+    .explique > summary::before { content: "▸"; color: var(--accent); flex: 0 0 auto; font-size: 13px; }
+    .explique[open] > summary::before { content: "▾"; }
+    .explique > summary:hover { background: #1c2938; }
+    .explique .corps { padding: 0 14px 13px 38px; font-size: 13.5px; color: var(--muted); }
+    .explique .corps p { margin: 0 0 7px; }
+    .explique .corps p:last-child { margin-bottom: 0; }
+    .explique .corps b { color: var(--txt); }
+    .points {
+      font-family: "Cascadia Mono", Consolas, monospace; font-weight: 700;
+      font-size: 13px; flex: 0 0 auto; min-width: 38px; text-align: right;
+    }
+    .points.hausse { color: var(--high); }
+    .points.baisse { color: var(--low); }
+    .points.neutre { color: var(--muted); }
+    /* Explication d'un champ, repliée dans le tableau des informations */
+    .champ-explique { margin-top: 5px; }
+    .champ-explique > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+    .champ-explique .corps { padding: 7px 0 2px; font-size: 13px; color: var(--muted); }
+    .champ-explique .corps p { margin: 0 0 6px; }
+    .champ-explique .corps b { color: var(--txt); }
+    .calcul {
+      background: #0e1620; border: 1px solid var(--line); border-radius: 9px;
+      padding: 11px 14px; font-size: 13.5px; color: var(--muted); margin-top: 12px;
+      font-family: "Cascadia Mono", Consolas, monospace; word-break: break-word;
+    }
+    .calcul b { color: var(--txt); }
+    .glossaire-terme { border-bottom: 1px solid var(--line); padding: 14px 0; }
+    .glossaire-terme:last-child { border-bottom: 0; }
+    .glossaire-terme h3 { margin: 0 0 6px; font-size: 15px; color: var(--txt); text-transform: none; letter-spacing: 0; }
+    .glossaire-terme p { margin: 0 0 6px; font-size: 14px; color: var(--muted); }
+    .glossaire-terme p.pratique { color: #a9c8e0; font-size: 13.5px; }
+    .glossaire-terme p.pratique::before { content: "En pratique — "; color: var(--accent); font-weight: 600; }
+    .glossaire-cat { display: flex; flex-wrap: wrap; gap: 7px; margin: 18px 0 4px; }
+    .glossaire-cat a { font-size: 13px; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -183,6 +229,7 @@
       <a href="/tableau-de-bord" class="{% if page == 'tableau-de-bord' %}actif{% endif %}">Tableau de bord</a>
       <a href="/historique" class="{% if page == 'historique' %}actif{% endif %}">Historique</a>
       <a href="/api" class="{% if page == 'api' %}actif{% endif %}">API JSON</a>
+      <a href="/glossaire" class="{% if page == 'glossaire' %}actif{% endif %}">Glossaire</a>
       <a href="/export.csv">Export CSV</a>
     </nav>
   </div>

@@ -29,6 +29,7 @@ from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 
 import db
+import explications
 import scoring
 from enrichment import EnrichmentError, enrich
 from ioc_parser import TYPES, parse_ioc, parse_many
@@ -278,6 +279,22 @@ def dashboard():
                        stats=statistiques(etendue), db_error=erreur_db)
 
 
+@app.route("/glossaire")
+def glossaire():
+    """Page « Glossaire » : tout le vocabulaire de l'outil, expliqué en français.
+
+    Elle est construite à partir du même module que les explications affichées
+    sur la page d'analyse. Ajouter une explication à un seul endroit la fait donc
+    apparaître aux deux : impossible que le glossaire et le rapport divergent.
+    """
+    return render_page(
+        "glossaire.html",
+        "glossaire",
+        glossaire=explications.glossaire(),
+        compte=explications.nombre_explications(),
+    )
+
+
 @app.route("/historique")
 def historique():
     """Page « Historique » : les 25 dernières analyses, avec suppression."""
@@ -290,7 +307,7 @@ def historique():
 @app.route("/api")
 def api_documentation():
     """Page « API » : documentation des routes JSON et de l'export CSV."""
-    return render_page("api.html", "api")
+    return render_page("api.html", "api", compte=explications.nombre_explications())
 
 
 @app.route("/analyze", methods=["POST"])
@@ -436,6 +453,10 @@ def api_analyze():
             "niveau": risque["level"],
             "score": risque["score"],
             "raisons": risque["reasons"],
+            # Éléments expliqués : l'API restitue le raisonnement complet, pas
+            # seulement le verdict. Un outil qui la consomme peut donc afficher
+            # l'explication de chaque signal sans la réécrire.
+            "elements": risque["details"],
         },
         "source": enrichissement["source"],
         "http_status": enrichissement["http_status"],

@@ -32,6 +32,7 @@ import socket
 
 import requests
 
+import explications
 from ioc_parser import portee_ip
 
 log = logging.getLogger("ioc-enricher.api")
@@ -570,7 +571,13 @@ def enrich_hash(empreinte: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def enrich(ioc: str, ioc_type: str) -> dict:
-    """Appelle la bonne API selon le type d'IOC détecté."""
+    """Appelle la bonne API selon le type d'IOC détecté.
+
+    C'est aussi le point de passage unique où les informations brutes sont
+    converties en informations expliquées. Tout ce qui sort de ce module — page
+    web, API JSON, tests — porte donc l'explication de chaque champ, sans qu'un
+    appelant puisse l'oublier.
+    """
     repartition = {"ip": enrich_ip, "domain": enrich_domain, "hash": enrich_hash}
     if ioc_type not in repartition:
         raise EnrichmentError(f"Type d'IOC non pris en charge : {ioc_type}", kind="invalid")
@@ -578,4 +585,5 @@ def enrich(ioc: str, ioc_type: str) -> dict:
     resultat = repartition[ioc_type](ioc)
     resultat["ioc"] = ioc
     resultat["ioc_type"] = ioc_type
+    resultat["fields"] = explications.expliquer_champs(resultat.get("fields"))
     return resultat

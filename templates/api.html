@@ -56,13 +56,42 @@
   "type": "ip",
   "reputation": "SUSPECT",
   "action": "BLOQUER ET INVESTIGUER",
-  "risque": { "niveau": "HIGH", "score": 70, "raisons": ["..."] },
-  "source": "ip-api.com",
-  "http_status": 200,
-  "endpoint": "http://ip-api.com/json/185.220.101.1?fields=...",
-  "informations": [["Pays", "Germany"], ["Proxy / VPN", "oui"]],
+  "risque": {
+    "niveau": "HIGH",
+    "score": 70,
+    "raisons": ["..."],
+    "elements": [
+      { "label": "Adresse détectée comme proxy / VPN / Tor",
+        "points": 35,
+        "explication": "Le trafic provenant de cette adresse passe par un service qui masque son origine…",
+        "pourquoi": "L'anonymat volontaire ne prouve pas la malveillance, mais il complique l'attribution…" }
+    ]
+  },
+  "informations": [
+    { "libelle": "Pays",
+      "valeur": "Germany",
+      "explication": "Pays où le registre régional situe le bloc d'adresses…",
+      "pourquoi": "Sert à situer l'infrastructure, jamais à conclure…" }
+  ],
   "enregistre": false
 }</pre>
+    <p class="hint">
+      <b>Chaque élément est expliqué par l'API elle-même.</b> Le champ
+      <code class="cle">explication</code> dit ce que l'élément signifie, et
+      <code class="cle">pourquoi</code> dit ce qu'il change dans l'analyse. Un outil qui
+      consomme cette API peut donc restituer le raisonnement complet, sans avoir à
+      réécrire le moindre texte pédagogique.
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>Le vocabulaire est documenté</h2>
+    <p class="hint" style="margin-top:0">
+      Les {{ compte.concepts }} termes employés par l'outil — ASN, RDAP, DMARC, Tor,
+      IOC désamorcé, faux positif… — sont définis dans le <a href="/glossaire">glossaire</a>.
+      Les {{ compte.champs }} informations possibles et les {{ compte.signaux }} signaux de score
+      y sont également expliqués.
+    </p>
   </section>
 
   <section class="card">

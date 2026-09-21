@@ -354,13 +354,17 @@ def test_adresse_privee_est_analysee_sans_appel_reseau():
 
 
 def test_adresse_privee_expliquee_dans_les_champs():
+    """Chaque information porte sa valeur, son explication et sa justification."""
     enrichissement = enrichment.enrich("192.168.1.1", "ip")
-    champs = dict(enrichissement["fields"])
+    champs = {champ["libelle"]: champ for champ in enrichissement["fields"]}
 
-    assert champs["Routable sur Internet"] == "non"
-    assert champs["Portée"] == "privée"
-    assert "192.168.0.0/16" in champs["Plage d'appartenance"]
-    assert "RFC 1918" in champs["Explication"]
+    assert champs["Routable sur Internet"]["valeur"] == "non"
+    assert champs["Portée"]["valeur"] == "privée"
+    assert "192.168.0.0/16" in champs["Plage d'appartenance"]["valeur"]
+    assert "RFC 1918" in champs["Explication"]["valeur"]
+
+    for champ in enrichissement["fields"]:
+        assert champ["explication"], f"Information sans explication : {champ['libelle']}"
 
 
 # ---------------------------------------------------------------------------

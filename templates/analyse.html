@@ -112,21 +112,73 @@
 
   <section class="card">
     <h2>Justification du score de risque</h2>
-    <ul class="reasons">
-      {% for raison in result.risque.reasons %}<li>{{ raison }}</li>{% endfor %}
-    </ul>
+    <p class="hint" style="margin-top:0">
+      Chaque élément qui pèse dans le score est expliqué : dépliez-le pour savoir ce qu'il
+      signifie et ce qu'il change concrètement.
+    </p>
+    {% for detail in result.risque.details %}
+    <details class="explique">
+      <summary>
+        <span class="points {% if detail.points > 0 %}hausse{% elif detail.points < 0 %}baisse{% else %}neutre{% endif %}">
+          {%- if detail.points > 0 %}+{{ detail.points }}{% elif detail.points < 0 %}{{ detail.points }}{% else %}—{% endif -%}
+        </span>
+        <span>{{ detail.label }}</span>
+      </summary>
+      <div class="corps">
+        <p>{{ detail.explication }}</p>
+        {% if detail.pourquoi %}<p><b>Ce que cela change :</b> {{ detail.pourquoi }}</p>{% endif %}
+        {% if detail.points %}
+        <p><b>Poids :</b> {{ '+' if detail.points > 0 else '' }}{{ detail.points }} point(s) sur le score.</p>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+
+    {% if result.risque.reputation == 'HORS PÉRIMÈTRE' %}
+    <p class="calcul">
+      Aucun point n'est attribué : <b>0/100</b> — la question posée ne s'applique pas à cette adresse.
+    </p>
+    {% else %}
+    <p class="calcul">
+      {% set apport = result.risque.details | sum(attribute='points') %}
+      Score de départ <b>{{ result.risque.base_score }}</b>
+      {%- if apport %} {{ '+' if apport > 0 else '−' }} <b>{{ apport | abs }}</b> (somme des signaux){% endif %}
+      = <b>{{ result.risque.score }}/100</b> → niveau <b>{{ result.risque.level }}</b> ({{ result.risque.reputation }})
+    </p>
+    {% endif %}
   </section>
 
   <section class="card">
     <h2>Informations enrichies</h2>
+    <p class="hint" style="margin-top:0">
+      Chaque information porte son explication. Cliquez sur « comprendre cet élément » pour
+      savoir à quoi elle correspond et en quoi elle compte dans l'analyse.
+    </p>
     <table>
-      {% for label, valeur in result.enrichissement.fields %}
-      <tr><td class="k">{{ label }}</td><td class="mono">{{ valeur if valeur not in (None, '') else '—' }}</td></tr>
+      {% for champ in result.enrichissement.fields %}
+      <tr>
+        <td class="k">{{ champ.libelle }}</td>
+        <td class="mono">
+          {{ champ.valeur if champ.valeur not in (None, '') else '—' }}
+          {% if champ.explication %}
+          <details class="champ-explique">
+            <summary>comprendre cet élément</summary>
+            <div class="corps">
+              <p>{{ champ.explication }}</p>
+              {% if champ.pourquoi %}<p><b>Ce que cela change :</b> {{ champ.pourquoi }}</p>{% endif %}
+            </div>
+          </details>
+          {% endif %}
+        </td>
+      </tr>
       {% endfor %}
     </table>
     {% if result.enrichissement.notes %}
     <p class="hint">{% for note in result.enrichissement.notes %}{{ note }}<br>{% endfor %}</p>
     {% endif %}
+    <p class="hint">
+      Un terme vous échappe ? Le <a href="/glossaire">glossaire</a> explique tout le vocabulaire employé.
+    </p>
     <details>
       <summary>Voir la réponse brute de la source — {{ result.enrichissement.endpoint }}</summary>
       <pre>{{ result.enrichissement.raw | tojson(indent=2) }}</pre>

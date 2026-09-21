@@ -42,7 +42,11 @@ risque justifié et un historique centralisé.
 | Fonctionnalité | Description |
 |---|---|
 | Détection du type | L'utilisateur ne choisit rien : l'application reconnaît une IP, un domaine ou un hash. |
+| **Chaque élément est expliqué** | Aucune donnée ne s'affiche sans explication. Chaque information relevée et **chaque signal qui pèse dans le score** porte deux textes : ce que l'élément signifie, et ce qu'il change dans l'analyse. Vérifié automatiquement : un test échoue si un champ du code reste sans explication. |
+| **Glossaire** | Page `/glossaire` : 31 termes du métier définis en français courant (ASN, RDAP, DMARC, Tor, k-anonymat, faux positif…), construits depuis le même module que les explications du rapport — les deux ne peuvent donc pas diverger. |
+| **Calcul du score affiché** | Le rapport montre le détail du calcul : score de départ 10, puis chaque signal avec son poids, jusqu'au total borné. Rien n'est attribué sans justification visible. |
 | Adresses non routables | Une adresse privée, locale ou réservée (`192.168.1.1`, `127.0.0.1`, `fe80::1`) est reconnue **localement** : verdict « HORS PÉRIMÈTRE » argumenté, sans appel réseau inutile et sans erreur. |
+| **Normalisation des saisies réelles** | Un analyste colle ce que contient son journal : `8.8.8.8:8080` (port retiré), `www.github.com` (normalisé), `185[.]220[.]101[.]1` (*refang*), `HXXPS://…` (schéma retiré), empreinte en majuscules (minuscules appliquées). Les adresses IPv6 restent intactes : leurs deux-points font partie de l'adresse. |
 | Identité visuelle | Logo et favicon **SVG dessinés à la main** (bouclier + balayage radar), servis par l'application elle-même : aucune ressource externe, compatible avec la CSP stricte. |
 | Prise en main immédiate | La page d'accueil explique ce qu'est un IOC, propose **4 exemples lançables en un clic** et affiche un rapport d'exemple : la page n'est jamais vide. |
 | Validation de la saisie | Les IOC mal formés sont refusés avec un message clair (jamais de `ERROR` brut). |
@@ -71,7 +75,7 @@ risque justifié et un historique centralisé.
 | Requêtes HTTP | **requests** | Bibliothèque standard de fait pour appeler une API REST. |
 | Base de données | **Supabase** (PostgreSQL) | Demandée par le sujet, avec API REST intégrée. |
 | Configuration | **python-dotenv** + variables d'environnement | Aucune clé dans le code. |
-| Tests | **pytest** | 32 tests unitaires automatisés. |
+| Tests | **pytest** | 65 tests automatisés, dont un jeu dédié à la couverture des explications. |
 | Hébergement | **Vercel** | Déploiement public gratuit en une commande. |
 
 ## 5. API utilisées
@@ -215,18 +219,55 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 | `ioc_parser.py` | Détection et validation du type d'IOC (aucun appel réseau). |
 | `enrichment.py` | Appels HTTP aux API externes + normalisation des réponses JSON. |
 | `scoring.py` | Règles de risque : signaux → score 0-100 → niveau LOW/…/CRITICAL. |
+| `explications.py` | **Source unique de toutes les explications** : les 42 informations possibles, les 23 signaux de score et les 31 termes du glossaire. Consommée à la fois par la page d'analyse, l'API JSON et le glossaire. |
 | `db.py` | Accès Supabase (API REST PostgREST) : insert, select, delete, count. |
 | `templates/base.html` | Gabarit commun : en-tête, menu, pied de page et styles (héritage Jinja). |
 | `templates/analyse.html` | Page « Analyser » : formulaire, rapport, résultats de lot. |
 | `templates/tableau_bord.html` | Page « Tableau de bord » : statistiques et barres. |
 | `templates/historique.html` | Page « Historique » : tableau, suppression, export CSV. |
 | `templates/api.html` | Page « API JSON » : documentation des routes. |
+| `templates/glossaire.html` | Page « Glossaire » : tout le vocabulaire, regroupé par thème. |
 | `static/logo.svg` | Logo du projet (bouclier + balayage radar), dessiné en SVG. |
 | `static/favicon.svg` | Icône d'onglet du navigateur, déclinée du logo. |
 | `api/index.py` | Point d'entrée pour le déploiement serverless sur Vercel. |
 | `sql/schema.sql` | Création de la table `ioc_analyses` et des règles d'accès (RLS). |
-| `tests/test_socle.py` | Tests unitaires (pytest). |
+| `tests/test_socle.py` | Tests unitaires du socle (pytest). |
+| `tests/test_explications.py` | Tests de couverture des explications : parcours dynamique de tous les chemins, plus deux contrôles statiques lisant le code source. |
 | `tools/smoke_api.py` | Test des API externes en conditions réelles. |
+
+### Le principe : rien ne s'affiche sans explication
+
+Un rapport de renseignement qui affiche `AS13335` ou `p=reject` sans dire ce que
+c'est oblige son lecteur à faire confiance. L'outil prend donc le parti inverse :
+**chaque élément qu'il montre est capable de se justifier**.
+
+Concrètement, `explications.py` associe à chaque élément deux textes :
+
+| Champ | Contenu | Exemple |
+|---|---|---|
+| `explication` | Ce que l'élément signifie | « Numéro de système autonome : le numéro qui identifie, sur Internet, l'opérateur chargé d'annoncer ce bloc d'adresses. » |
+| `pourquoi` | Ce que cela change dans l'analyse | « Deux adresses appartenant au même opérateur sont souvent exploitées par le même groupe. » |
+
+Ces textes sont attachés **au point de passage unique** (`enrich()` pour les
+informations, `compute_risk()` pour les signaux). Ils apparaissent donc
+automatiquement partout : sur la page d'analyse, dans l'API JSON et dans le
+glossaire. Impossible qu'un endroit affiche un élément que l'autre ne sait pas
+expliquer.
+
+Deux familles de tests garantissent que l'engagement tient dans le temps :
+
+1. **Parcours dynamique** — tous les chemins d'enrichissement sont exécutés avec
+   des réponses simulées, y compris les chemins secondaires (domaine inconnu du
+   registre, empreinte jamais cataloguée, adresse non routable, source de repli).
+   Chaque champ et chaque signal rencontré doit trouver son explication.
+2. **Contrôles statiques** — les tests lisent la source de `enrichment.py` et de
+   `scoring.py` et relèvent chaque libellé déclaré. Un champ ajouté demain sans
+   explication fait échouer la suite, **même si aucun test ne l'exerce encore**.
+
+Le complément dynamique est indispensable : c'est en écrivant ces tests qu'a été
+découvert le champ « Connue des bases publiques », produit uniquement lorsque la
+base de fichiers ne connaît pas l'empreinte — un chemin que le parcours initial
+n'empruntait pas.
 
 ### Schéma de la table Supabase
 
@@ -248,6 +289,8 @@ Le fichier `.env` (jamais publié sur GitHub, il est listé dans `.gitignore`) :
 |---|---|
 | Page « Analyser » (formulaire) | [`docs/capture-analyse.png`](docs/capture-analyse.png) |
 | Rapport d'analyse d'une IP (score HIGH) | [`docs/capture-rapport.png`](docs/capture-rapport.png) |
+| **Rapport expliqué : chaque signal déplié, avec son poids et sa justification** | [`docs/capture-rapport-explique.png`](docs/capture-rapport-explique.png) |
+| **Page « Glossaire » : 31 termes du métier définis** | [`docs/capture-glossaire.png`](docs/capture-glossaire.png) |
 | Réponse JSON brute de l'API (dépliée) | [`docs/capture-json.png`](docs/capture-json.png) |
 | Analyse d'un nom de domaine (SPF / DMARC) | [`docs/capture-domaine.png`](docs/capture-domaine.png) |
 | Mode « analyse par lots » | [`docs/capture-lot.png`](docs/capture-lot.png) |
@@ -292,6 +335,7 @@ vercel --prod
 | `GET /tableau-de-bord` | Page « Tableau de bord » : statistiques |
 | `GET /historique` | Page « Historique » : analyses enregistrées et suppression |
 | `GET /api` | Page « API JSON » : documentation des routes |
+| `GET /glossaire` | Page « Glossaire » : tout le vocabulaire de l'outil, expliqué |
 | `POST /analyze` | Analyse d'un indicateur — ou d'un lot de 5 maximum |
 | `POST /delete/<id>` | Suppression d'une analyse de l'historique |
 | `GET /export.csv` | Export CSV de tout l'historique |

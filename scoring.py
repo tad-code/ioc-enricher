@@ -11,6 +11,8 @@ Tout est transparent : le rapport affiche POURQUOI tel score a été attribué.
 
 from __future__ import annotations
 
+import explications
+
 # Score de départ : un IOC est par définition un élément à vérifier.
 BASE_SCORE = 10
 
@@ -100,22 +102,27 @@ def compute_risk(ioc_type: str, enrichment: dict) -> dict:
     # On l'annonce clairement au lieu d'afficher un faux « risque faible ».
     if enrichment.get("non_routable"):
         portee = enrichment.get("portee") or {}
+        raisons = [
+            f"Adresse {portee.get('portee', 'non routable')} "
+            f"({portee.get('plage', 'plage non routable')}) : "
+            f"{portee.get('raison', 'cette adresse ne peut pas être interrogée sur Internet')}",
+            "Aucune base de renseignement publique ne peut se prononcer sur "
+            "une adresse qui n'est pas routable sur Internet",
+            "Adresse interne au réseau : la vérification se fait dans "
+            "l'inventaire du parc et les journaux, pas dans une API publique",
+        ]
         return {
             "score": 0,
             "level": "LOW",
             "reputation": "HORS PÉRIMÈTRE",
             "action": "AUCUNE ACTION — ADRESSE INTERNE",
-            "reasons": [
-                f"Adresse {portee.get('portee', 'non routable')} "
-                f"({portee.get('plage', 'plage non routable')}) : "
-                f"{portee.get('raison', 'cette adresse ne peut pas être interrogée sur Internet')}",
-                "Aucune base de renseignement publique ne peut se prononcer sur "
-                "une adresse qui n'est pas routable sur Internet",
-                "Adresse interne au réseau : la vérification se fait dans "
-                "l'inventaire du parc et les journaux, pas dans une API publique",
-            ],
+            "reasons": raisons,
             "base_score": 0,
-            "details": [],
+            # Aucun point n'est attribué : ces raisons expliquent une absence
+            # d'analyse, elles ne pèsent pas dans un score qui reste nul.
+            "details": explications.expliquer_signaux(
+                [{"points": 0, "label": raison} for raison in raisons]
+            ),
         }
 
     # Règles contextuelles ajoutées par le moteur lui-même.
@@ -129,9 +136,15 @@ def compute_risk(ioc_type: str, enrichment: dict) -> dict:
     total = BASE_SCORE + sum(int(s.get("points", 0)) for s in signaux)
     total = max(0, min(100, total))  # on borne le score entre 0 et 100
 
-    raisons = [s["label"] for s in signaux] or [
-        "Aucun signal négatif détecté par les sources interrogées"
-    ]
+    if signaux:
+        raisons = [s["label"] for s in signaux]
+        detailles = explications.expliquer_signaux(signaux)
+    else:
+        # Une absence de signal doit s'expliquer comme n'importe quel autre
+        # élément : « 10/100 » sans un mot laisse l'analyste devant un chiffre
+        # qu'il ne peut pas interpréter.
+        raisons = ["Aucun signal négatif détecté par les sources interrogées"]
+        detailles = explications.expliquer_signaux([{"points": 0, "label": raisons[0]}])
 
     return {
         "score": total,
@@ -140,5 +153,5 @@ def compute_risk(ioc_type: str, enrichment: dict) -> dict:
         "action": action_for(level_for(total)),
         "reasons": raisons,
         "base_score": BASE_SCORE,
-        "details": signaux,
+        "details": detailles,
     }
