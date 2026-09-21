@@ -162,9 +162,17 @@ def _enrich_ip_with_ipapi(ip: str) -> dict:
         raise EnrichmentError(f"ip-api.com a refusé l'adresse {ip} : {message}.", kind="invalid")
 
     signaux = []
+    # Calibration : chaque signal est pondéré par ce qu'il prouve réellement.
+    # « hosting » seul ne prouve rien de malveillant — tout serveur DNS public,
+    # tout hébergeur et tout nuage sont en datacenter. À 25 points, il faisait
+    # passer 8.8.8.8 (Google DNS) en « DOUTEUX ». À 10 points, il informe sans
+    # décider : seul, il reste sous le seuil, et il ne pèse qu'en combinaison.
     if brut.get("hosting"):
-        signaux.append({"points": 25, "label": "Adresse hébergée dans un datacenter / hébergeur (hosting)"})
+        signaux.append({"points": 10, "label": "Adresse hébergée dans un datacenter / hébergeur (hosting)"})
     if brut.get("proxy"):
+        # Signal plus lourd que « hosting » : un proxy, un VPN ou une sortie Tor
+        # masque délibérément l'origine du trafic. Reste néanmoins au niveau
+        # intermédiaire, car ce n'est pas en soi une preuve de malveillance.
         signaux.append({"points": 35, "label": "Adresse détectée comme proxy / VPN / Tor"})
     if brut.get("mobile"):
         signaux.append({"points": 5, "label": "Adresse appartenant à un réseau mobile"})

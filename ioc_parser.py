@@ -51,11 +51,38 @@ def refang(value: str) -> str:
 
 SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.\-]*://", re.IGNORECASE)
 
+# Une saisie qui a la forme d'une adresse IPv4 : quatre blocs numériques.
+IPV4_FORME_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
+
 
 def strip_scheme(value: str) -> str:
     """Retire un éventuel schéma d'URL (https://, ftp://...) pour ne garder
     que la donnée exploitable : l'hôte, l'adresse IP ou l'empreinte."""
     return SCHEME_RE.sub("", value or "")
+
+
+def forme_ip_invalide(value: str):
+    """Repère une adresse IPv4 mal formée, par exemple « 300.300.300.300 ».
+
+    Pourquoi ce contrôle est indispensable : un nom de domaine peut légalement
+    contenir des labels numériques, donc « 300.300.300.300 » satisfait
+    l'expression régulière des domaines. Sans ce test, une adresse impossible
+    était analysée comme un domaine suspect et recevait 55/100 — un contresens :
+    elle n'existe pas, aucune base publique ne peut la connaître, et noter une
+    faute de frappe revient à afficher un risque qui n'existe pas.
+
+    Retourne un message d'erreur, ou None si la saisie n'a pas cette forme.
+    """
+    if not IPV4_FORME_RE.match(value or ""):
+        return None
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return (
+            f"« {value} » a la forme d'une adresse IP mais n'en est pas une : "
+            "chaque bloc doit être compris entre 0 et 255."
+        )
+    return None
 
 
 def detect_type(value: str):
@@ -162,6 +189,22 @@ def parse_ioc(value: str) -> dict:
         }
 
     candidate = strip_scheme(refang(value))
+
+    # --- Adresse IPv4 impossible -----------------------------------------
+    # Un nom de domaine peut contenir des labels numériques : « 300.300.300.300 »
+    # satisfait donc l'expression régulière des domaines. On refuse ce cas
+    # explicitement, avant la détection de type, pour ne pas noter une faute de
+    # frappe comme s'il s'agissait d'un domaine suspect.
+    message_ip_invalide = forme_ip_invalide(candidate)
+    if message_ip_invalide:
+        return {
+            "ok": False,
+            "error": message_ip_invalide,
+            "ioc": candidate,
+            "type": None,
+            "detail": None,
+        }
+
     ioc_type = detect_type(candidate)
 
     # --- Cas invalide ----------------------------------------------------

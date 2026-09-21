@@ -72,6 +72,38 @@ def test_parse_ioc_detecte_une_ip_privee():
 
 
 # ---------------------------------------------------------------------------
+# Adresses IP impossibles : refusées avant la détection de type
+# ---------------------------------------------------------------------------
+
+def test_parse_ioc_refuse_une_adresse_ip_impossible():
+    """« 300.300.300.300 » a la forme d'une IP mais n'en est pas une.
+
+    Un nom de domaine peut contenir des labels numériques : sans contrôle
+    dédié, cette saisie satisfaisait l'expression régulière des domaines et
+    était donc analysée comme un domaine suspect, à 55/100.
+    """
+    for saisie in ("300.300.300.300", "999.1.1.1", "1.2.3.999", "256.0.0.1"):
+        resultat = parse_ioc(saisie)
+        assert resultat["ok"] is False, saisie
+        assert resultat["type"] is None, saisie
+        assert "entre 0 et 255" in resultat["error"], saisie
+
+
+def test_une_adresse_ip_impossible_n_est_pas_prise_pour_un_domaine():
+    """Le message d'erreur doit parler d'adresse, pas de domaine."""
+    resultat = parse_ioc("300.300.300.300")
+    assert "domaine" not in resultat["error"].lower()
+
+
+def test_les_adresses_ip_valides_restent_acceptees():
+    """Garde-fou : le contrôle ajouté ne doit rejeter aucune adresse légitime."""
+    for saisie in ("0.0.0.0", "255.255.255.255", "8.8.8.8", "1.1.1.1", "192.168.1.1"):
+        resultat = parse_ioc(saisie)
+        assert resultat["ok"] is True, saisie
+        assert resultat["type"] == "ip", saisie
+
+
+# ---------------------------------------------------------------------------
 # Mode « analyse par lots »
 # ---------------------------------------------------------------------------
 
@@ -176,6 +208,46 @@ def test_score_augmente_avec_les_signaux():
 def test_score_borne_entre_0_et_100():
     resultat = scoring.compute_risk("ip", {"signals": [{"points": 500, "label": "abusif"}], "data": {}})
     assert resultat["score"] == 100
+
+
+def test_le_datacenter_seul_ne_rend_pas_une_adresse_douteuse():
+    """Un hébergement en datacenter ne suffit pas à qualifier une adresse.
+
+    Tout serveur DNS public, tout CDN et tout service en nuage sont hébergés en
+    datacenter. Si ce signal seul faisait franchir le seuil du niveau
+    intermédiaire, 8.8.8.8 (Google DNS) et 1.1.1.1 (Cloudflare) seraient
+    affichés « DOUTEUX » — un faux positif que le premier visiteur venu
+    relèverait, et qui décrédibilise tout le score.
+    """
+    resultat = scoring.compute_risk(
+        "ip", {"signals": [{"points": 10, "label": "hébergé dans un datacenter"}], "data": {}}
+    )
+    assert resultat["level"] == "LOW", resultat
+    assert resultat["reputation"] == "SAIN"
+
+
+def test_le_datacenter_compte_toujours_en_combinaison():
+    """Le signal reste utile : associé à un proxy, il fait monter le niveau."""
+    resultat = scoring.compute_risk(
+        "ip",
+        {
+            "signals": [
+                {"points": 10, "label": "hébergé dans un datacenter"},
+                {"points": 35, "label": "proxy / VPN / Tor"},
+            ],
+            "data": {},
+        },
+    )
+    assert resultat["score"] >= 50, resultat
+    assert resultat["level"] in ("HIGH", "CRITICAL")
+
+
+def test_un_signal_moyen_isole_plafonne_au_niveau_intermediaire():
+    """Un proxy ou un VPN n'est pas en soi une preuve de malveillance."""
+    resultat = scoring.compute_risk(
+        "ip", {"signals": [{"points": 35, "label": "proxy / VPN / Tor"}], "data": {}}
+    )
+    assert resultat["level"] == "MEDIUM", resultat
 
 
 def test_tld_suspect_est_une_raison():
