@@ -104,6 +104,54 @@ def test_les_adresses_ip_valides_restent_acceptees():
 
 
 # ---------------------------------------------------------------------------
+# Normalisation des saisies copiées d'un journal ou d'un rapport
+# ---------------------------------------------------------------------------
+
+def test_port_retire_de_l_adresse_ip():
+    """« 8.8.8.8:8080 » doit être reconnu comme une adresse, pas comme un domaine.
+
+    Un analyste copie très souvent « adresse:port » depuis un journal de
+    connexion. Sans nettoyage, la chaîne retombait dans la détection de domaine
+    et recevait 40/100.
+    """
+    resultat = parse_ioc("8.8.8.8:8080")
+    assert resultat["ok"] is True
+    assert resultat["type"] == "ip"
+    assert resultat["ioc"] == "8.8.8.8"
+
+
+def test_port_retire_du_domaine():
+    resultat = parse_ioc("exemple.com:443")
+    assert resultat["ok"] is True
+    assert resultat["type"] == "domain"
+    assert resultat["ioc"] == "exemple.com"
+
+
+def test_une_ipv6_n_est_pas_alteree_par_le_retrait_de_port():
+    """Les deux-points d'une IPv6 font partie de l'adresse, pas d'un port."""
+    for saisie in ("2001:4860:4860::8888", "fe80::1", "::1"):
+        resultat = parse_ioc(saisie)
+        assert resultat["ok"] is True, saisie
+        assert resultat["type"] == "ip", saisie
+
+
+def test_le_prefixe_www_est_retire():
+    """www.github.com et github.com désignent le même domaine analysé."""
+    avec = parse_ioc("www.github.com")
+    sans = parse_ioc("github.com")
+    assert avec["ok"] is True and sans["ok"] is True
+    assert avec["ioc"] == sans["ioc"] == "github.com"
+    assert avec["type"] == "domain"
+
+
+def test_un_domaine_en_www_a_trois_niveaux_reste_intact():
+    """Le nettoyage ne doit pas abîmer un sous-domaine réellement distinct."""
+    resultat = parse_ioc("www.monentreprise.example.com")
+    assert resultat["ok"] is True
+    assert resultat["ioc"] == "monentreprise.example.com"
+
+
+# ---------------------------------------------------------------------------
 # Mode « analyse par lots »
 # ---------------------------------------------------------------------------
 

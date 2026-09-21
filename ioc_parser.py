@@ -51,6 +51,11 @@ def refang(value: str) -> str:
 
 SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.\-]*://", re.IGNORECASE)
 
+# Un hôte suivi d'un numéro de port : « 8.8.8.8:8080 », « exemple.com:443 ».
+# Le groupe « hote » interdit le deux-points, ce qui laisse les adresses IPv6
+# intactes : leurs deux-points font partie de l'adresse, pas d'un port.
+HOTE_PORT_RE = re.compile(r"^(?P<hote>[^\s:]+):(?P<port>\d{1,5})$")
+
 # Une saisie qui a la forme d'une adresse IPv4 : quatre blocs numériques.
 IPV4_FORME_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
 
@@ -59,6 +64,27 @@ def strip_scheme(value: str) -> str:
     """Retire un éventuel schéma d'URL (https://, ftp://...) pour ne garder
     que la donnée exploitable : l'hôte, l'adresse IP ou l'empreinte."""
     return SCHEME_RE.sub("", value or "")
+
+
+def retirer_port(value: str) -> str:
+    """Retire un numéro de port collé à l'hôte : « 8.8.8.8:8080 » -> « 8.8.8.8 ».
+
+    Pourquoi : un analyste copie très souvent une valeur « adresse:port » depuis
+    un journal de connexion. Sans ce nettoyage, la chaîne n'est plus reconnue
+    comme une adresse IP et retombe dans la détection de domaine, qui lui
+    attribue alors un verdict faux (40/100 pour 8.8.8.8:8080).
+
+    Les adresses IPv6 sont laissées telles quelles : leurs deux-points font
+    partie de l'adresse elle-même, et non d'un port.
+    """
+    correspondance = HOTE_PORT_RE.match(value or "")
+    if not correspondance:
+        return value
+    hote = correspondance.group("hote")
+    # On n'agit que si ce qui précède ressemble à un hôte (il contient un point).
+    if "." not in hote:
+        return value
+    return hote
 
 
 def forme_ip_invalide(value: str):
@@ -188,7 +214,7 @@ def parse_ioc(value: str) -> dict:
             "detail": None,
         }
 
-    candidate = strip_scheme(refang(value))
+    candidate = retirer_port(strip_scheme(refang(value)))
 
     # --- Adresse IPv4 impossible -----------------------------------------
     # Un nom de domaine peut contenir des labels numériques : « 300.300.300.300 »
@@ -238,8 +264,12 @@ def parse_ioc(value: str) -> dict:
 
     elif ioc_type == "domain":
         candidate = candidate.split("/")[0].split(":")[0].lower()
-        if candidate.startswith("www.") and candidate.count(".") > 2:
-            # www.evil.com et evil.com désignent le même domaine analysé.
+        # « www. » est la sous-domaine la plus répandue du web et ne désigne pas
+        # un domaine différent : www.github.com et github.com doivent donner le
+        # même verdict. L'ancienne condition exigeait trois points ou plus, si
+        # bien que www.github.com (deux points) n'était pas normalisé et
+        # recevait 40/100 — un domaine inconnu du registre, disait l'analyse.
+        if candidate.startswith("www.") and candidate.count(".") >= 2:
             candidate = candidate[4:]
 
     return {"ok": True, "error": None, "ioc": candidate, "type": ioc_type, "detail": detail}
