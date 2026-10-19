@@ -1,5 +1,5 @@
 -r requirements.txt
-pytest==9.0.3
+pytest==9.1.1
 
 # Optionnel : uniquement pour régénérer les captures d'écran du README
 # (tools/capture_screenshots.py pilote le Chrome déjà installé).
